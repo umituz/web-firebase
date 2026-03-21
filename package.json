@@ -1,6 +1,6 @@
 {
   "name": "@umituz/web-firebase",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Universal Firebase utilities for web applications",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
