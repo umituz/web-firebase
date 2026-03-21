@@ -1,0 +1,50 @@
+{
+  "name": "@umituz/web-firebase",
+  "version": "1.0.0",
+  "description": "Universal Firebase utilities for web applications",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./domain": "./src/domain/index.ts",
+    "./infrastructure": "./src/infrastructure/index.ts",
+    "./presentation": "./src/presentation/index.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean --external react --external firebase --external firebase/app --external firebase/auth --external firebase/firestore --external firebase/storage --external firebase/functions",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch --external react --external firebase",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "firebase",
+    "firestore",
+    "auth",
+    "storage",
+    "react",
+    "web"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "peerDependencies": {
+    "firebase": ">=10",
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "firebase": "^11.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}
