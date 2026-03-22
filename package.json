@@ -1,49 +1,25 @@
 {
   "name": "@umituz/web-firebase",
-  "version": "2.1.1",
-  "description": "Comprehensive Firebase integration with DDD architecture for web applications",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "version": "3.0.0",
+  "description": "Comprehensive Firebase integration with domain-based architecture for web applications",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
   },
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    },
-    "./domain": {
-      "types": "./dist/domain/index.d.ts",
-      "import": "./dist/domain/index.mjs",
-      "require": "./dist/domain/index.js"
-    },
-    "./application": {
-      "types": "./dist/application/index.d.ts",
-      "import": "./dist/application/index.mjs",
-      "require": "./dist/application/index.js"
-    },
-    "./infrastructure": {
-      "types": "./dist/infrastructure/index.d.ts",
-      "import": "./dist/infrastructure/index.mjs",
-      "require": "./dist/infrastructure/index.js"
-    },
-    "./presentation": {
-      "types": "./dist/presentation/index.d.ts",
-      "import": "./dist/presentation/index.mjs",
-      "require": "./dist/presentation/index.js"
-    }
+    ".": "./src/index.ts",
+    "./auth": "./src/domains/auth/index.ts",
+    "./firestore": "./src/domains/firestore/index.ts",
+    "./storage": "./src/domains/storage/index.ts",
+    "./package.json": "./package.json"
   },
   "files": [
-    "dist",
     "src"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/domain/index.ts src/application/index.ts src/infrastructure/index.ts src/presentation/index.ts --format cjs,esm --dts --clean --external react --external firebase --external firebase/app --external firebase/auth --external firebase/firestore --external firebase/storage --external firebase/functions",
-    "dev": "tsup src/index.ts src/domain/index.ts src/application/index.ts src/infrastructure/index.ts src/presentation/index.ts --format cjs,esm --dts --watch --external react --external firebase",
-    "lint": "tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "firebase",
@@ -57,10 +33,8 @@
     "typescript",
     "ddd",
     "domain-driven-design",
-    "clean-architecture",
-    "repository-pattern",
-    "use-cases",
-    "hexagonal-architecture"
+    "package-driven",
+    "repository-pattern"
   ],
   "author": "umituz",
   "license": "MIT",
@@ -71,7 +45,6 @@
   "devDependencies": {
     "@types/react": "^18.2.0",
     "firebase": "^12.11.0",
-    "tsup": "^8.0.0",
     "typescript": "^5.0.0"
   }
 }

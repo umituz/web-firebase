@@ -1,11 +1,12 @@
 /**
- * Authentication Repository Interface
- * @description Generic contract for authentication operations
+ * Auth Service Interface
+ * @description Abstract interface for authentication operations
  */
 
-import type { UserCredential, User as FirebaseUser } from 'firebase/auth'
+import type { UserCredential } from 'firebase/auth'
+import type { AuthUser } from '../entities'
 
-export interface IAuthRepository {
+export interface IAuthService {
   /**
    * Sign in with email and password
    */
@@ -59,10 +60,13 @@ export interface IAuthRepository {
   /**
    * Get current authenticated user
    */
-  getCurrentUser(): FirebaseUser | null
+  getCurrentUser(): AuthUser | null
 
   /**
    * Subscribe to auth state changes
    */
-  onAuthStateChanged(callback: (user: FirebaseUser | null) => void, onError?: (error: Error) => void): () => void
+  onAuthStateChanged(
+    callback: (user: AuthUser | null) => void,
+    onError?: (error: Error) => void
+  ): () => void
 }

@@ -7,12 +7,14 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import type { User } from 'firebase/auth'
 import type { FirebaseInstances } from '../../infrastructure/firebase/client'
 import { getFirebaseInstances } from '../../infrastructure/firebase/client'
-import { AuthAdapter } from '../../infrastructure/firebase/auth.adapter'
+import type { AuthUser } from '../../domains/auth/entities'
+import { authService } from '../../domains/auth/services'
 
 export interface FirebaseContextValue {
   instances: FirebaseInstances
   isInitialized: boolean
   user: User | null
+  authUser: AuthUser | null
   loading: boolean
   error: Error | null
 }
@@ -34,6 +36,7 @@ export interface FirebaseProviderProps {
 export function FirebaseProvider({ children, config }: FirebaseProviderProps) {
   const [instances, setInstances] = useState<FirebaseInstances | null>(null)
   const [user, setUser] = useState<User | null>(null)
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
@@ -44,10 +47,10 @@ export function FirebaseProvider({ children, config }: FirebaseProviderProps) {
       setInstances(firebaseInstances)
 
       // Set up auth state listener
-      const authAdapter = new AuthAdapter()
-      const unsubscribe = authAdapter.onAuthStateChanged(
-        (user) => {
-          setUser(user)
+      const unsubscribe = authService.onAuthStateChanged(
+        (newAuthUser) => {
+          setAuthUser(newAuthUser)
+          setUser(newAuthUser ? (firebaseInstances.auth.currentUser || null) : null)
           setLoading(false)
           setError(null)
         },
@@ -70,16 +73,9 @@ export function FirebaseProvider({ children, config }: FirebaseProviderProps) {
     instances: instances!,
     isInitialized: !!instances,
     user,
+    authUser,
     loading,
     error,
-  }
-
-  if (!instances || loading) {
-    return (
-      <FirebaseContext.Provider value={{ ...value, isInitialized: false }}>
-        {children}
-      </FirebaseContext.Provider>
-    )
   }
 
   return <FirebaseContext.Provider value={value}>{children}</FirebaseContext.Provider>
@@ -92,4 +88,3 @@ export function useFirebaseContext(): FirebaseContextValue {
   }
   return context
 }
-

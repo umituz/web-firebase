@@ -1,19 +1,19 @@
 /**
  * Auth Hook
  * @description React hook for authentication operations
- * Uses FirebaseProvider context - no repository injection needed
+ * Uses new domain services - no adapter injection needed
  */
 
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { User as FirebaseUser } from 'firebase/auth'
-import type { User } from '../../domain/entities/user.entity'
-import { AuthAdapter } from '../../infrastructure/firebase/auth.adapter'
-import { FirestoreAdapter } from '../../infrastructure/firebase/firestore.adapter'
+import type { User as FirestoreUser } from '../../domains/firestore/entities'
+import { authService } from '../../domains/auth/services'
+import { firestoreService } from '../../domains/firestore/services'
 import { useFirebaseContext } from '../providers/FirebaseProvider'
 
 export interface UseAuthResult {
   firebaseUser: FirebaseUser | null
-  user: User | null
+  user: FirestoreUser | null
   loading: boolean
   error: Error | null
   isAuthenticated: boolean
@@ -29,62 +29,106 @@ export interface UseAuthResult {
 }
 
 export function useAuth(): UseAuthResult {
-  const { instances, user, loading, error } = useFirebaseContext()
+  const { instances, loading, error } = useFirebaseContext()
+  const [user, setUser] = useState<FirestoreUser | null>(null)
 
-  const authAdapter = new AuthAdapter()
-  const firestoreAdapter = new FirestoreAdapter()
+  useEffect(() => {
+    const fetchUser = async () => {
+      const currentUser = instances?.auth.currentUser
+      if (currentUser) {
+        const userData = await firestoreService.getUser(currentUser.uid)
+        setUser(userData)
+      } else {
+        setUser(null)
+      }
+    }
+    fetchUser()
+  }, [instances?.auth.currentUser])
 
   const signIn = useCallback(async (email: string, password: string) => {
-    return await authAdapter.signIn(email, password)
+    const result = await authService.signIn(email, password)
+    return result.user
   }, [])
 
   const signUp = useCallback(async (email: string, password: string, displayName: string) => {
-    const userCredential = await authAdapter.signUp(email, password, displayName)
+    const userCredential = await authService.signUp(email, password, displayName)
 
     // Create user profile in Firestore
-    await firestoreAdapter.createUser(userCredential.user.uid, {
+    const now = Date.now()
+    await firestoreService.createUser(userCredential.user.uid, {
       profile: {
+        id: userCredential.user.uid,
         email: email,
         displayName: displayName,
-        createdAt: Date.now(),
+        createdAt: now,
+        updatedAt: now,
+        lastLoginAt: now,
+        emailVerified: false,
       },
       settings: {
         theme: 'light',
         language: 'tr',
+        timezone: 'Europe/Istanbul',
+        currency: 'TRY',
+        notifications: {
+          email: true,
+          push: true,
+          marketing: false,
+          security: true,
+          weeklyDigest: false,
+        },
+        privacy: {
+          profileVisibility: 'public',
+          showEmail: false,
+          showPhone: false,
+          dataSharing: false,
+        },
+      },
+      subscription: {
+        plan: 'free',
+        status: 'active',
+        cancelAtPeriodEnd: false,
+        createdAt: now,
+        updatedAt: now,
       },
     })
 
     return userCredential.user
   }, [])
 
-  const signInWithGoogle = useCallback(async () => {
-    return await authAdapter.signInWithGoogle()
+  const signInWithGoogleCallback = useCallback(async () => {
+    const result = await authService.signInWithGoogle()
+    return result.user
   }, [])
 
   const signOut = useCallback(async () => {
-    await authAdapter.signOut()
+    await authService.signOut()
   }, [])
 
   const sendPasswordReset = useCallback(async (email: string) => {
-    await authAdapter.sendPasswordReset(email)
+    await authService.sendPasswordReset(email)
   }, [])
 
   const resendEmailVerification = useCallback(async () => {
-    await authAdapter.resendEmailVerification()
+    await authService.resendEmailVerification()
   }, [])
 
   const updateProfile = useCallback(async (updates: { displayName?: string; photoURL?: string }) => {
-    await authAdapter.updateProfile(updates)
+    await authService.updateProfile(updates)
 
     // Refresh user data from Firestore if available
-    if (instances?.auth.currentUser) {
-      await firestoreAdapter.getUser(instances.auth.currentUser.uid)
+    const currentUser = instances?.auth.currentUser
+    if (currentUser) {
+      const userData = await firestoreService.getUser(currentUser.uid)
+      setUser(userData)
     }
   }, [instances])
 
   const refreshUser = useCallback(async () => {
-    if (instances?.auth.currentUser) {
-      await firestoreAdapter.getUser(instances.auth.currentUser.uid)
+    const currentUser = instances?.auth.currentUser
+    if (currentUser) {
+      const userData = await firestoreService.getUser(currentUser.uid)
+      setUser(userData)
     }
   }, [instances])
 
@@ -97,7 +141,7 @@ export function useAuth(): UseAuthResult {
     isEmailVerified: instances?.auth.currentUser?.emailVerified || false,
     signIn,
     signUp,
-    signInWithGoogle,
+    signInWithGoogle: signInWithGoogleCallback,
     signOut,
     sendPasswordReset,
     resendEmailVerification,
@@ -105,4 +149,3 @@ export function useAuth(): UseAuthResult {
     refreshUser,
   }
 }
-

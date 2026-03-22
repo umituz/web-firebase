@@ -1,75 +1,48 @@
 /**
  * User Repository Interface
- * @description Defines contract for user data operations
+ * @description Generic contract for user data operations
  */
 
-import type { User } from '../entities/user.entity'
 import type { QueryConstraint } from 'firebase/firestore'
 
-/**
- * User Repository Interface
- * Defines operations for user data management
- */
 export interface IUserRepository {
   /**
-   * Get user by ID
+   * Get document by ID
    */
-  getUser(userId: string): Promise<User | null>
+  getById<T>(userId: string): Promise<T | null>
 
   /**
-   * Get user by email
+   * Get document by field
    */
-  getUserByEmail(email: string): Promise<User | null>
+  getByField<T>(collectionPath: string, field: string, value: any): Promise<T | null>
 
   /**
-   * Create user
+   * Create document
    */
-  createUser(userId: string, data: Partial<User>): Promise<void>
+  create(userId: string, data: any): Promise<void>
 
   /**
-   * Update user
+   * Update document
    */
-  updateUser(userId: string, data: Partial<User>): Promise<void>
+  update(userId: string, data: any, options?: { merge?: boolean }): Promise<void>
 
   /**
-   * Delete user
+   * Delete document
    */
-  deleteUser(userId: string): Promise<void>
+  delete(userId: string): Promise<void>
 
   /**
-   * Update user profile
+   * Query collection with constraints
    */
-  updateProfile(userId: string, updates: Partial<Pick<User['profile'], 'displayName' | 'photoURL' | 'phoneNumber'>>): Promise<void>
+  query<T>(collectionPath: string, constraints: QueryConstraint[]): Promise<T[]>
 
   /**
-   * Update user settings
+   * Subscribe to document changes
    */
-  updateSettings(userId: string, settings: Partial<User['settings']>): Promise<void>
+  subscribeToDoc<T>(docPath: string, callback: (data: T | null) => void): () => void
 
   /**
-   * Update user subscription
+   * Subscribe to collection changes
    */
-  updateSubscription(
-    userId: string,
-    subscription: Partial<User['subscription']>
-  ): Promise<void>
-
-  /**
-   * Update last login timestamp
-   */
-  updateLastLogin(userId: string): Promise<void>
-
-  /**
-   * Query users with constraints
-   */
-  queryUsers(constraints: QueryConstraint[]): Promise<User[]>
-
-  /**
-   * Subscribe to user document changes
-   */
-  subscribeToUser(
-    userId: string,
-    callback: (user: User | null) => void,
-    onError?: (error: Error) => void
-  ): () => void
+  subscribeToCollection<T>(collectionPath: string, callback: (data: T[]) => void, constraints?: QueryConstraint[]): () => void
 }

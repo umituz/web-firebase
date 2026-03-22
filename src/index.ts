@@ -1,23 +1,19 @@
 /**
  * @umituz/web-firebase
- * Comprehensive Firebase integration with DDD architecture
+ * Firebase integration for web applications with domain-based architecture
  *
- * ONEMLI: App'ler bu root barrel'i kullanMAMALI.
- * Subpath import kullanin:
- * - "@umituz/web-firebase/domain" - Domain entities, value objects, interfaces
- * - "@umituz/web-firebase/application" - Use cases and DTOs
- * - "@umituz/web-firebase/infrastructure" - Firebase adapters
- * - "@umituz/web-firebase/presentation" - React hooks and providers
+ * Usage:
+ * import { AuthService } from '@umituz/web-firebase/auth'
+ * import { FirestoreService } from '@umituz/web-firebase/firestore'
+ * import { StorageService } from '@umituz/web-firebase/storage'
  */
 
-// Domain entities, value objects, interfaces, errors
-export * from './domain'
+// Firebase client initialization
+export * from './infrastructure/firebase/client'
 
-// Application use cases and DTOs
-export * from './application'
+// React components
+export { FirebaseProvider, useFirebaseContext } from './presentation/providers/FirebaseProvider'
 
-// Infrastructure Firebase adapters
-export * from './infrastructure'
-
-// Presentation hooks and providers
-export * from './presentation'
+// Re-export common types for convenience
+export type { FirebaseInstances } from './infrastructure/firebase/client'
+export type { FirebaseContextValue, FirebaseProviderProps } from './presentation/providers/FirebaseProvider'
