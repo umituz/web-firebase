@@ -21,7 +21,10 @@
     "src"
   ],
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "build": "npm run clean && tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "firebase",
