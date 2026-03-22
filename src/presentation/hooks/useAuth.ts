@@ -1,146 +1,100 @@
 /**
  * Auth Hook
  * @description React hook for authentication operations
- * Migrated from: /Users/umituz/Desktop/github/umituz/apps/web/app-growth-factory/src/domains/firebase/hooks/useAuth.ts
- * Refactored to use use cases
+ * Uses FirebaseProvider context - no repository injection needed
  */
 
-import { useEffect, useState, useCallback } from 'react'
-import { User as FirebaseUser } from 'firebase/auth'
+import { useCallback } from 'react'
+import type { User as FirebaseUser } from 'firebase/auth'
 import type { User } from '../../domain/entities/user.entity'
-import type { IAuthRepository } from '../../domain/interfaces/auth.repository.interface'
-import type { IUserRepository } from '../../domain/interfaces/user.repository.interface'
-import type { SignInDTO, SignUpDTO } from '../../application/dto/auth.dto'
+import { AuthAdapter } from '../../infrastructure/firebase/auth.adapter'
+import { FirestoreAdapter } from '../../infrastructure/firebase/firestore.adapter'
+import { useFirebaseContext } from '../providers/FirebaseProvider'
 
-export interface UseAuthOptions {
-  authRepository: IAuthRepository
-  userRepository: IUserRepository
+export interface UseAuthResult {
+  firebaseUser: FirebaseUser | null
+  user: User | null
+  loading: boolean
+  error: Error | null
+  isAuthenticated: boolean
+  isEmailVerified: boolean
+  signIn: (email: string, password: string) => Promise<FirebaseUser>
+  signUp: (email: string, password: string, displayName: string) => Promise<FirebaseUser>
+  signInWithGoogle: () => Promise<FirebaseUser>
+  signOut: () => Promise<void>
+  sendPasswordReset: (email: string) => Promise<void>
+  resendEmailVerification: () => Promise<void>
+  updateProfile: (updates: { displayName?: string; photoURL?: string }) => Promise<void>
+  refreshUser: () => Promise<void>
 }
 
-export function useAuth({ authRepository, userRepository }: UseAuthOptions) {
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null)
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+export function useAuth(): UseAuthResult {
+  const { instances, user, loading, error } = useFirebaseContext()
 
-  useEffect(() => {
-    const unsubscribe = authRepository.onAuthStateChanged(async (fbUser) => {
-      setFirebaseUser(fbUser)
+  const authAdapter = new AuthAdapter()
+  const firestoreAdapter = new FirestoreAdapter()
 
-      if (fbUser) {
-        try {
-          const userData = await userRepository.getUser(fbUser.uid)
-          setUser(userData)
-        } catch (err) {
-          console.error('Error fetching user data:', err)
-          setError(err as Error)
-        }
-      } else {
-        setUser(null)
-      }
+  const signIn = useCallback(async (email: string, password: string) => {
+    return await authAdapter.signIn(email, password)
+  }, [])
 
-      setLoading(false)
+  const signUp = useCallback(async (email: string, password: string, displayName: string) => {
+    const userCredential = await authAdapter.signUp(email, password, displayName)
+
+    // Create user profile in Firestore
+    await firestoreAdapter.createUser(userCredential.user.uid, {
+      profile: {
+        email: email,
+        displayName: displayName,
+        createdAt: Date.now(),
+      },
+      settings: {
+        theme: 'light',
+        language: 'tr',
+      },
     })
 
-    return () => unsubscribe()
-  }, [authRepository, userRepository])
-
-  const signIn = useCallback(async (dto: SignInDTO) => {
-    setError(null)
-    try {
-      return await authRepository.signIn(dto.email, dto.password)
-    } catch (err) {
-      setError(err as Error)
-      throw err
-    }
-  }, [authRepository])
-
-  const signUp = useCallback(async (dto: SignUpDTO) => {
-    setError(null)
-    try {
-      return await authRepository.signUp(dto.email, dto.password, dto.displayName)
-    } catch (err) {
-      setError(err as Error)
-      throw err
-    }
-  }, [authRepository])
+    return userCredential.user
+  }, [])
 
   const signInWithGoogle = useCallback(async () => {
-    setError(null)
-    try {
-      return await authRepository.signInWithGoogle()
-    } catch (err) {
-      setError(err as Error)
-      throw err
-    }
-  }, [authRepository])
+    return await authAdapter.signInWithGoogle()
+  }, [])
 
   const signOut = useCallback(async () => {
-    setError(null)
-    try {
-      await authRepository.signOut()
-      setUser(null)
-      setFirebaseUser(null)
-    } catch (err) {
-      setError(err as Error)
-      throw err
-    }
-  }, [authRepository])
+    await authAdapter.signOut()
+  }, [])
 
   const sendPasswordReset = useCallback(async (email: string) => {
-    setError(null)
-    try {
-      await authRepository.sendPasswordReset(email)
-    } catch (err) {
-      setError(err as Error)
-      throw err
-    }
-  }, [authRepository])
+    await authAdapter.sendPasswordReset(email)
+  }, [])
 
   const resendEmailVerification = useCallback(async () => {
-    setError(null)
-    try {
-      await authRepository.resendEmailVerification()
-    } catch (err) {
-      setError(err as Error)
-      throw err
-    }
-  }, [authRepository])
+    await authAdapter.resendEmailVerification()
+  }, [])
 
   const updateProfile = useCallback(async (updates: { displayName?: string; photoURL?: string }) => {
-    setError(null)
-    try {
-      await authRepository.updateProfile(updates)
-      if (firebaseUser) {
-        const userData = await userRepository.getUser(firebaseUser.uid)
-        setUser(userData)
-      }
-    } catch (err) {
-      setError(err as Error)
-      throw err
+    await authAdapter.updateProfile(updates)
+
+    // Refresh user data from Firestore if available
+    if (instances?.auth.currentUser) {
+      await firestoreAdapter.getUser(instances.auth.currentUser.uid)
     }
-  }, [authRepository, userRepository, firebaseUser])
+  }, [instances])
 
   const refreshUser = useCallback(async () => {
-    setError(null)
-    try {
-      if (firebaseUser) {
-        const userData = await userRepository.getUser(firebaseUser.uid)
-        setUser(userData)
-      }
-    } catch (err) {
-      setError(err as Error)
-      throw err
+    if (instances?.auth.currentUser) {
+      await firestoreAdapter.getUser(instances.auth.currentUser.uid)
     }
-  }, [userRepository, firebaseUser])
+  }, [instances])
 
   return {
-    firebaseUser,
+    firebaseUser: instances?.auth.currentUser || null,
     user,
     loading,
     error,
-    isAuthenticated: !!firebaseUser,
-    isEmailVerified: firebaseUser?.emailVerified || false,
+    isAuthenticated: !!instances?.auth.currentUser,
+    isEmailVerified: instances?.auth.currentUser?.emailVerified || false,
     signIn,
     signUp,
     signInWithGoogle,
@@ -151,3 +105,4 @@ export function useAuth({ authRepository, userRepository }: UseAuthOptions) {
     refreshUser,
   }
 }
+
