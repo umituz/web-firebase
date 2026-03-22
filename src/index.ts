@@ -11,8 +11,8 @@
 // Firebase client initialization
 export * from './infrastructure/firebase/client'
 
-// React components
-export { FirebaseProvider, useFirebaseContext } from './presentation/providers/FirebaseProvider'
+// Presentation Layer (React components & hooks)
+export * from './presentation/index'
 
 // Re-export common types for convenience
 export type { FirebaseInstances } from './infrastructure/firebase/client'
