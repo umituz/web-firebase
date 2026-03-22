@@ -1,8 +1,13 @@
 /**
- * Infrastructure Layer
- * Subpath: @umituz/web-firebase/infrastructure
+ * Infrastructure Layer Public API
+ * @description Exports all Firebase adapters and repositories
  */
 
-export * from './services/firebase.service';
-export * from './services/firestore.repository';
-export * from './utils/storage.util';
+// Firebase
+export * from './firebase/client'
+export * from './firebase/auth.adapter'
+export * from './firebase/firestore.adapter'
+export * from './firebase/storage.adapter'
+
+// Utils
+export * from './utils/storage.util'

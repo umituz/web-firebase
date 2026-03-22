@@ -12,7 +12,7 @@ import {
  * @description Upload and delete helpers for Firebase Storage
  */
 
-export interface UploadResult {
+export interface StorageUploadResult {
   url: string;
   path: string;
 }
@@ -21,7 +21,7 @@ export async function uploadFile(
   storage: FirebaseStorage,
   path: string,
   file: File | Blob,
-): Promise<UploadResult> {
+): Promise<StorageUploadResult> {
   const storageRef = ref(storage, path);
   await uploadBytes(storageRef, file);
   const url = await getDownloadURL(storageRef);
@@ -33,7 +33,7 @@ export async function uploadBase64(
   path: string,
   base64: string,
   mimeType = 'image/jpeg',
-): Promise<UploadResult> {
+): Promise<StorageUploadResult> {
   const storageRef = ref(storage, path);
   const dataUrl = base64.startsWith('data:') ? base64 : `data:${mimeType};base64,${base64}`;
   await uploadString(storageRef, dataUrl, 'data_url');

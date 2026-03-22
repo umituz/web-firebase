@@ -1,7 +1,7 @@
 {
   "name": "@umituz/web-firebase",
-  "version": "1.0.5",
-  "description": "Universal Firebase utilities for web applications",
+  "version": "2.0.0",
+  "description": "Comprehensive Firebase integration with DDD architecture for web applications",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -15,17 +15,34 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
-    "./domain": "./src/domain/index.ts",
-    "./infrastructure": "./src/infrastructure/index.ts",
-    "./presentation": "./src/presentation/index.ts"
+    "./domain": {
+      "types": "./dist/domain/index.d.ts",
+      "import": "./dist/domain/index.mjs",
+      "require": "./dist/domain/index.js"
+    },
+    "./application": {
+      "types": "./dist/application/index.d.ts",
+      "import": "./dist/application/index.mjs",
+      "require": "./dist/application/index.js"
+    },
+    "./infrastructure": {
+      "types": "./dist/infrastructure/index.d.ts",
+      "import": "./dist/infrastructure/index.mjs",
+      "require": "./dist/infrastructure/index.js"
+    },
+    "./presentation": {
+      "types": "./dist/presentation/index.d.ts",
+      "import": "./dist/presentation/index.mjs",
+      "require": "./dist/presentation/index.js"
+    }
   },
   "files": [
     "dist",
     "src"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts --clean --external react --external firebase --external firebase/app --external firebase/auth --external firebase/firestore --external firebase/storage --external firebase/functions",
-    "dev": "tsup src/index.ts --format cjs,esm --dts --watch --external react --external firebase",
+    "build": "tsup src/index.ts src/domain/index.ts src/application/index.ts src/infrastructure/index.ts src/presentation/index.ts --format cjs,esm --dts --clean --external react --external firebase --external firebase/app --external firebase/auth --external firebase/firestore --external firebase/storage --external firebase/functions",
+    "dev": "tsup src/index.ts src/domain/index.ts src/application/index.ts src/infrastructure/index.ts src/presentation/index.ts --format cjs,esm --dts --watch --external react --external firebase",
     "lint": "tsc --noEmit"
   },
   "keywords": [
@@ -33,18 +50,27 @@
     "firestore",
     "auth",
     "storage",
+    "functions",
+    "analytics",
     "react",
-    "web"
+    "web",
+    "typescript",
+    "ddd",
+    "domain-driven-design",
+    "clean-architecture",
+    "repository-pattern",
+    "use-cases",
+    "hexagonal-architecture"
   ],
-  "author": "Antigravity",
+  "author": "umituz",
   "license": "MIT",
   "peerDependencies": {
-    "firebase": ">=10",
+    "firebase": ">=12",
     "react": ">=18"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",
-    "firebase": "^11.0.0",
+    "firebase": "^12.11.0",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0"
   }
