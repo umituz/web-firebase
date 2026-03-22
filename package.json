@@ -1,6 +1,6 @@
 {
   "name": "@umituz/web-firebase",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Comprehensive Firebase integration with DDD architecture for web applications",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
