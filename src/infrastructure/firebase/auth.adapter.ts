@@ -320,8 +320,8 @@ export class AuthAdapter implements IAuthRepository {
     return this.auth.currentUser
   }
 
-  onAuthStateChanged(callback: (user: FirebaseUser | null) => void) {
-    return this.auth.onAuthStateChanged(callback)
+  onAuthStateChanged(callback: (user: FirebaseUser | null) => void, onError?: (error: Error) => void) {
+    return this.auth.onAuthStateChanged(callback, onError)
   }
 
   // ==================== Token Management ====================

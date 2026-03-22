@@ -3,46 +3,18 @@
  * @description Generic contract for user data operations
  */
 
-import type { QueryConstraint } from 'firebase/firestore'
+import type { User } from '../entities/user.entity'
 
 export interface IUserRepository {
-  /**
-   * Get document by ID
-   */
-  getById<T>(userId: string): Promise<T | null>
-
-  /**
-   * Get document by field
-   */
-  getByField<T>(collectionPath: string, field: string, value: any): Promise<T | null>
-
-  /**
-   * Create document
-   */
-  create(userId: string, data: any): Promise<void>
-
-  /**
-   * Update document
-   */
-  update(userId: string, data: any, options?: { merge?: boolean }): Promise<void>
-
-  /**
-   * Delete document
-   */
-  delete(userId: string): Promise<void>
-
-  /**
-   * Query collection with constraints
-   */
-  query<T>(collectionPath: string, constraints: QueryConstraint[]): Promise<T[]>
-
-  /**
-   * Subscribe to document changes
-   */
-  subscribeToDoc<T>(docPath: string, callback: (data: T | null) => void): () => void
-
-  /**
-   * Subscribe to collection changes
-   */
-  subscribeToCollection<T>(collectionPath: string, callback: (data: T[]) => void, constraints?: QueryConstraint[]): () => void
+  getUser(userId: string): Promise<User | null>
+  getUserByEmail(email: string): Promise<User | null>
+  createUser(userId: string, data: Partial<User>): Promise<void>
+  updateUser(userId: string, data: Partial<User>): Promise<void>
+  deleteUser(userId: string): Promise<void>
+  updateProfile(userId: string, updates: Partial<Pick<User['profile'], 'displayName' | 'photoURL' | 'phoneNumber'>>): Promise<void>
+  updateSettings(userId: string, settings: Partial<User['settings']>): Promise<void>
+  updateSubscription(userId: string, subscription: Partial<User['subscription']>): Promise<void>
+  updateLastLogin(userId: string): Promise<void>
+  queryUsers(constraints: any[]): Promise<User[]>
+  subscribeToUser(userId: string, callback: (user: User | null) => void, onError?: (error: Error) => void): () => void
 }

@@ -6,7 +6,6 @@
 import type { UserCredential } from 'firebase/auth'
 import type { IAuthRepository } from '../../../domain/interfaces/auth.repository.interface'
 import type { IUserRepository } from '../../../domain/interfaces/user.repository.interface'
-import type { CreateUserDTO } from '../../dto/user.dto'
 import { createAuthError, AuthErrorCode } from '../../../domain/errors/auth.errors'
 
 export class SignInWithGoogleUseCase {
@@ -27,16 +26,19 @@ export class SignInWithGoogleUseCase {
       const existingUser = await this.userRepository.getUser(result.user.uid)
       if (!existingUser) {
         // New user - create user document
-        const createUserDTO: CreateUserDTO = {
-          id: result.user.uid,
-          email: result.user.email || '',
-          displayName: result.user.displayName || '',
-          photoURL: result.user.photoURL || undefined,
-          phoneNumber: result.user.phoneNumber || undefined,
-          emailVerified: result.user.emailVerified,
-        }
-
-        await this.authRepository.createUserDocument(result.user.uid, createUserDTO)
+        await this.userRepository.createUser(result.user.uid, {
+          profile: {
+            id: result.user.uid,
+            email: result.user.email || '',
+            displayName: result.user.displayName || '',
+            photoURL: result.user.photoURL || undefined,
+            phoneNumber: result.user.phoneNumber || undefined,
+            emailVerified: result.user.emailVerified,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            lastLoginAt: Date.now(),
+          }
+        } as any)
       }
 
       return result
