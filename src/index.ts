@@ -1,19 +1,10 @@
 /**
  * @umituz/web-firebase
- * Firebase integration for web applications with domain-based architecture
+ * Firebase client initialization and core services
  *
  * Usage:
- * import { AuthService } from '@umituz/web-firebase/auth'
- * import { FirestoreService } from '@umituz/web-firebase/firestore'
- * import { StorageService } from '@umituz/web-firebase/storage'
+ * import { initializeFirebase, getFirebaseDB } from '@umituz/web-firebase'
  */
 
 // Firebase client initialization
 export * from './infrastructure/firebase/client'
-
-// Presentation Layer (React components & hooks)
-export * from './presentation/index'
-
-// Re-export common types for convenience
-export type { FirebaseInstances } from './infrastructure/firebase/client'
-export type { FirebaseContextValue, FirebaseProviderProps } from './presentation/providers/FirebaseProvider'

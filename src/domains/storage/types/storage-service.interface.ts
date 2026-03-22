@@ -7,6 +7,7 @@ import type {
   UploadResult,
   UploadOptions,
 } from '../entities'
+import type { FileValidationOptions } from '../../../domain/entities/file.entity'
 
 export interface IStorageService {
   /**
@@ -87,11 +88,7 @@ export interface IStorageService {
   /**
    * Validate file before upload
    */
-  validateFile(file: File, options?: {
-    maxSizeBytes?: number
-    maxSizeMB?: number
-    allowedTypes?: string[]
-  }): boolean
+  validateFile(file: File, options?: FileValidationOptions): boolean
 
   /**
    * Check if file is an image

@@ -3,7 +3,7 @@
  * @description Generic contract for file storage operations
  */
 
-import type { UploadResult, UploadOptions } from '../entities/file.entity'
+import type { UploadResult, UploadOptions, FileValidationOptions } from '../entities/file.entity'
 
 export interface IFileRepository {
   /**
@@ -67,5 +67,5 @@ export interface IFileRepository {
   /**
    * Validate file before upload
    */
-  validateFile(file: File, options?: any): boolean
+  validateFile(file: File, options?: FileValidationOptions): boolean
 }

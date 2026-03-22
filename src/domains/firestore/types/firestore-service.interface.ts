@@ -3,7 +3,6 @@
  * @description Abstract interface for Firestore operations
  */
 
-import type { QueryConstraint } from 'firebase/firestore'
 import type { User } from '../entities'
 
 export interface IFirestoreService {
@@ -55,7 +54,7 @@ export interface IFirestoreService {
   /**
    * Query users with constraints
    */
-  queryUsers(constraints: QueryConstraint[]): Promise<User[]>
+  queryUsers(constraints: import('firebase/firestore').QueryConstraint[]): Promise<User[]>
 
   /**
    * Subscribe to user document changes

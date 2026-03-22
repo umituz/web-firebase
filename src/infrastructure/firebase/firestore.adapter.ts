@@ -23,7 +23,11 @@ import { createRepositoryError, RepositoryErrorCode } from '../../domain/errors/
 
 export class FirestoreAdapter implements IUserRepository {
   private get db() {
-    return getFirebaseDB()
+    const db = getFirebaseDB()
+    if (!db) {
+      throw new Error('Firestore not initialized. Call initializeFirebase() first.')
+    }
+    return db
   }
 
   private readonly USERS_COLLECTION = 'users'
@@ -74,7 +78,7 @@ export class FirestoreAdapter implements IUserRepository {
       await updateDoc(docRef, {
         ...data,
         'profile.updatedAt': Date.now(),
-      } as any)
+      } as Partial<User> & { 'profile.updatedAt': number })
     } catch (error) {
       throw createRepositoryError(RepositoryErrorCode.DOCUMENT_NOT_FOUND, 'Failed to update user', error)
     }
@@ -95,7 +99,7 @@ export class FirestoreAdapter implements IUserRepository {
   ): Promise<void> {
     try {
       const docRef = doc(this.db, this.USERS_COLLECTION, userId)
-      const updateData: any = {
+      const updateData: Record<string, string | number> = {
         'profile.updatedAt': Date.now(),
       }
 
@@ -122,8 +126,8 @@ export class FirestoreAdapter implements IUserRepository {
         settings: {
           ...settings,
           updatedAt: Date.now(),
-        },
-      } as any)
+        } as Partial<User['settings']> & { updatedAt: number },
+      })
     } catch (error) {
       throw createRepositoryError(RepositoryErrorCode.DOCUMENT_NOT_FOUND, 'Failed to update settings', error)
     }
@@ -136,8 +140,8 @@ export class FirestoreAdapter implements IUserRepository {
         subscription: {
           ...subscription,
           updatedAt: Date.now(),
-        },
-      } as any)
+        } as Partial<User['subscription']> & { updatedAt: number },
+      })
     } catch (error) {
       throw createRepositoryError(RepositoryErrorCode.DOCUMENT_NOT_FOUND, 'Failed to update subscription', error)
     }
@@ -148,13 +152,13 @@ export class FirestoreAdapter implements IUserRepository {
       const docRef = doc(this.db, this.USERS_COLLECTION, userId)
       await updateDoc(docRef, {
         'profile.lastLoginAt': Date.now(),
-      } as any)
+      } as { 'profile.lastLoginAt': number })
     } catch (error) {
       throw createRepositoryError(RepositoryErrorCode.DOCUMENT_NOT_FOUND, 'Failed to update last login', error)
     }
   }
 
-  async queryUsers(constraints: any[]): Promise<User[]> {
+  async queryUsers(constraints: import('firebase/firestore').QueryConstraint[]): Promise<User[]> {
     try {
       const q = query(collection(this.db, this.USERS_COLLECTION), ...constraints)
       const snap = await getDocs(q)

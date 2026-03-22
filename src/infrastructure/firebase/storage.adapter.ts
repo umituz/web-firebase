@@ -26,7 +26,11 @@ import { createRepositoryError, RepositoryErrorCode } from '../../domain/errors/
 
 export class StorageAdapter implements IFileRepository {
   private get storage() {
-    return getFirebaseStorage()
+    const storage = getFirebaseStorage()
+    if (!storage) {
+      throw new Error('Firebase Storage not initialized. Call initializeFirebase() first.')
+    }
+    return storage
   }
 
   // Upload Methods

@@ -21,7 +21,11 @@ import type { User } from '../entities'
 
 class FirestoreService implements IFirestoreService {
   private get db() {
-    return getFirebaseDB()
+    const db = getFirebaseDB()
+    if (!db) {
+      throw new Error('Firestore not initialized. Call initializeFirebase() first.')
+    }
+    return db
   }
 
   private readonly USERS_COLLECTION = 'users'
@@ -72,7 +76,7 @@ class FirestoreService implements IFirestoreService {
       await updateDoc(docRef, {
         ...data,
         'profile.updatedAt': Date.now(),
-      } as any)
+      } as Partial<User> & { 'profile.updatedAt': number })
     } catch (error) {
       throw new Error('Failed to update user')
     }
@@ -93,7 +97,7 @@ class FirestoreService implements IFirestoreService {
   ): Promise<void> {
     try {
       const docRef = doc(this.db, this.USERS_COLLECTION, userId)
-      const updateData: any = {
+      const updateData: Record<string, string | number> = {
         'profile.updatedAt': Date.now(),
       }
 
@@ -120,8 +124,8 @@ class FirestoreService implements IFirestoreService {
         settings: {
           ...settings,
           updatedAt: Date.now(),
-        },
-      } as any)
+        } as Partial<User['settings']> & { updatedAt: number },
+      })
     } catch (error) {
       throw new Error('Failed to update settings')
     }
@@ -134,8 +138,8 @@ class FirestoreService implements IFirestoreService {
         subscription: {
           ...subscription,
           updatedAt: Date.now(),
-        },
-      } as any)
+        } as Partial<User['subscription']> & { updatedAt: number },
+      })
     } catch (error) {
       throw new Error('Failed to update subscription')
     }
@@ -146,13 +150,13 @@ class FirestoreService implements IFirestoreService {
       const docRef = doc(this.db, this.USERS_COLLECTION, userId)
       await updateDoc(docRef, {
         'profile.lastLoginAt': Date.now(),
-      } as any)
+      } as { 'profile.lastLoginAt': number })
     } catch (error) {
       throw new Error('Failed to update last login')
     }
   }
 
-  async queryUsers(constraints: any[]): Promise<User[]> {
+  async queryUsers(constraints: import('firebase/firestore').QueryConstraint[]): Promise<User[]> {
     try {
       const q = query(collection(this.db, this.USERS_COLLECTION), ...constraints)
       const snap = await getDocs(q)

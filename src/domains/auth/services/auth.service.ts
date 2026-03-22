@@ -7,6 +7,7 @@
 import type { UserCredential } from 'firebase/auth'
 import type { AuthUser } from '../entities'
 import type { IAuthService } from '../types'
+import { toAuthUser } from '../entities'
 import { authAdapter } from '../../../infrastructure/firebase/auth.adapter'
 
 /**
@@ -110,25 +111,7 @@ class AuthService implements IAuthService {
   // ==================== State Management ====================
 
   getCurrentUser(): AuthUser | null {
-    const user = authAdapter.getCurrentUser()
-
-    if (!user) return null
-
-    return {
-      uid: user.uid,
-      email: user.email,
-      emailVerified: user.emailVerified,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-      phoneNumber: user.phoneNumber,
-      isAnonymous: user.isAnonymous,
-      tenantId: user.tenantId,
-      providerId: user.providerId,
-      metadata: {
-        creationTime: user.metadata.creationTime ? new Date(user.metadata.creationTime).getTime() : undefined,
-        lastSignInTime: user.metadata.lastSignInTime ? new Date(user.metadata.lastSignInTime).getTime() : undefined,
-      },
-    }
+    return toAuthUser(authAdapter.getCurrentUser())
   }
 
   onAuthStateChanged(
@@ -136,27 +119,7 @@ class AuthService implements IAuthService {
     onError?: (error: Error) => void
   ): () => void {
     return authAdapter.onAuthStateChanged(
-      (user) => {
-        callback(
-          user
-            ? {
-                uid: user.uid,
-                email: user.email,
-                emailVerified: user.emailVerified,
-                displayName: user.displayName,
-                photoURL: user.photoURL,
-                phoneNumber: user.phoneNumber,
-                isAnonymous: user.isAnonymous,
-                tenantId: user.tenantId,
-                providerId: user.providerId,
-                metadata: {
-                  creationTime: user.metadata.creationTime ? new Date(user.metadata.creationTime).getTime() : undefined,
-                  lastSignInTime: user.metadata.lastSignInTime ? new Date(user.metadata.lastSignInTime).getTime() : undefined,
-                },
-              }
-            : null
-        )
-      },
+      (user) => callback(toAuthUser(user)),
       onError
     )
   }

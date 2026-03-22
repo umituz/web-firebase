@@ -36,7 +36,11 @@ import { getAuthConfig } from '../../domain/config/auth.config'
  */
 export class AuthAdapter implements IAuthRepository {
   private get auth() {
-    return getFirebaseAuth()
+    const auth = getFirebaseAuth()
+    if (!auth) {
+      throw new Error('Firebase Auth not initialized. Call initializeFirebase() first.')
+    }
+    return auth
   }
 
   private config = getAuthConfig()
@@ -350,20 +354,6 @@ export class AuthAdapter implements IAuthRepository {
     } catch (error) {
       throw createAuthError(AuthErrorCode.UNKNOWN, 'Failed to refresh token', error)
     }
-  }
-
-  // ==================== Note ====================
-  // User document operations should be handled by UserAdapter
-
-  async createUserDocument(
-    _userId: string,
-    _data: Partial<Omit<User, 'profile'>> & { email: string; displayName: string }
-  ): Promise<void> {
-    throw new Error('createUserDocument should be handled by UserAdapter')
-  }
-
-  async updateLastLogin(_userId: string): Promise<void> {
-    throw new Error('updateLastLogin should be handled by UserAdapter')
   }
 
   // ==================== Error Handling ====================

@@ -4,6 +4,7 @@
  */
 
 import type { User } from '../entities/user.entity'
+import type { QueryConstraint } from 'firebase/firestore'
 
 export interface IUserRepository {
   getUser(userId: string): Promise<User | null>
@@ -15,6 +16,6 @@ export interface IUserRepository {
   updateSettings(userId: string, settings: Partial<User['settings']>): Promise<void>
   updateSubscription(userId: string, subscription: Partial<User['subscription']>): Promise<void>
   updateLastLogin(userId: string): Promise<void>
-  queryUsers(constraints: any[]): Promise<User[]>
+  queryUsers(constraints: QueryConstraint[]): Promise<User[]>
   subscribeToUser(userId: string, callback: (user: User | null) => void, onError?: (error: Error) => void): () => void
 }

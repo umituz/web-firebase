@@ -20,7 +20,12 @@ export interface IAuthService {
   /**
    * Sign in with Google OAuth
    */
-  signInWithGoogle(): Promise<UserCredential>
+  signInWithGoogle(useRedirect?: boolean): Promise<UserCredential>
+
+  /**
+   * Sign in with Apple OAuth
+   */
+  signInWithApple(useRedirect?: boolean): Promise<UserCredential>
 
   /**
    * Sign out current user
@@ -69,4 +74,29 @@ export interface IAuthService {
     callback: (user: AuthUser | null) => void,
     onError?: (error: Error) => void
   ): () => void
+
+  /**
+   * Link Google account to current user
+   */
+  linkGoogle(): Promise<UserCredential>
+
+  /**
+   * Link Apple account to current user
+   */
+  linkApple(): Promise<UserCredential>
+
+  /**
+   * Unlink provider from current user
+   */
+  unlinkProvider(providerId: string): Promise<void>
+
+  /**
+   * Get ID token for current user
+   */
+  getIdToken(forceRefresh?: boolean): Promise<string>
+
+  /**
+   * Refresh ID token for current user
+   */
+  refreshToken(): Promise<void>
 }

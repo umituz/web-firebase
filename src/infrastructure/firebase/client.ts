@@ -11,59 +11,81 @@ import { getStorage, FirebaseStorage } from 'firebase/storage'
 import { getAnalytics, Analytics } from 'firebase/analytics'
 import { getFunctions, Functions } from 'firebase/functions'
 
-const firebaseConfig = {
-  apiKey: (import.meta as any).env.VITE_FIREBASE_API_KEY,
-  authDomain: (import.meta as any).env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: (import.meta as any).env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: (import.meta as any).env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: (import.meta as any).env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: (import.meta as any).env.VITE_FIREBASE_APP_ID,
-  measurementId: (import.meta as any).env.VITE_FIREBASE_MEASUREMENT_ID,
+/**
+ * Firebase Configuration interface
+ * Pass this to initializeFirebase()
+ */
+export interface FirebaseConfig {
+  apiKey: string
+  authDomain: string
+  projectId: string
+  storageBucket: string
+  messagingSenderId: string
+  appId: string
+  measurementId?: string
 }
 
 // Singleton instances
-let app: FirebaseApp
-let auth: Auth
-let db: Firestore
-let storage: FirebaseStorage
-let functions: Functions
+let app: FirebaseApp | null = null
+let auth: Auth | null = null
+let db: Firestore | null = null
+let storage: FirebaseStorage | null = null
+let functions: Functions | null = null
 let analytics: Analytics | null = null
 
 /**
- * Initialize Firebase App
+ * Initialize Firebase with provided configuration
+ * Must be called before using any Firebase services
+ *
+ * @param config - Firebase configuration object
+ * @returns FirebaseApp instance
  */
-export function initializeFirebase(): FirebaseApp {
-  if (!getApps().length) {
-    app = initializeApp(firebaseConfig)
-  } else {
-    app = getApps()[0]
+export function initializeFirebase(config: FirebaseConfig): FirebaseApp {
+  if (app) {
+    return app
   }
+
+  if (getApps().length > 0) {
+    app = getApps()[0]
+    return app
+  }
+
+  // Validate config
+  if (!config.apiKey || !config.projectId) {
+    throw new Error('Invalid Firebase config: apiKey and projectId are required')
+  }
+
+  app = initializeApp(config)
   return app
 }
 
 /**
  * Get Firebase App instance
+ * @returns FirebaseApp instance or null if not initialized
  */
-export function getFirebaseApp(): FirebaseApp {
-  return app || initializeFirebase()
+export function getFirebaseApp(): FirebaseApp | null {
+  return app
 }
 
 /**
  * Get Firebase Auth instance
+ * @returns Auth instance or null if not initialized
  */
-export function getFirebaseAuth(): Auth {
+export function getFirebaseAuth(): Auth | null {
+  if (!app) {
+    return null
+  }
   if (!auth) {
     const firebaseApp = getFirebaseApp()
-    if (typeof window !== 'undefined') {
+    if (firebaseApp && typeof window !== 'undefined') {
       try {
         auth = getAuth(firebaseApp)
       } catch (e) {
-        console.warn('getAuth failed, trying initializeAuth...', e)
         auth = initializeAuth(firebaseApp, {
           persistence: browserLocalPersistence,
         })
       }
-    } else {
+    } else if (firebaseApp) {
       auth = getAuth(firebaseApp)
     }
   }
@@ -72,63 +94,100 @@ export function getFirebaseAuth(): Auth {
 
 /**
  * Get Firestore instance
+ * @returns Firestore instance or null if not initialized
  */
-export function getFirebaseDB(): Firestore {
+export function getFirebaseDB(): Firestore | null {
+  if (!app) {
+    return null
+  }
   if (!db) {
-    db = getFirestore(getFirebaseApp())
+    const firebaseApp = getFirebaseApp()
+    if (!firebaseApp) {
+      return null
+    }
+    db = getFirestore(firebaseApp)
   }
   return db
 }
 
 /**
  * Get Firebase Storage instance
+ * @returns FirebaseStorage instance or null if not initialized
  */
-export function getFirebaseStorage(): FirebaseStorage {
+export function getFirebaseStorage(): FirebaseStorage | null {
+  if (!app) {
+    return null
+  }
   if (!storage) {
-    storage = getStorage(getFirebaseApp())
+    const firebaseApp = getFirebaseApp()
+    if (!firebaseApp) {
+      return null
+    }
+    storage = getStorage(firebaseApp)
   }
   return storage
 }
 
 /**
  * Get Firebase Functions instance
+ * @returns Functions instance or null if not initialized
  */
-export function getFirebaseFunctions(): Functions {
+export function getFirebaseFunctions(): Functions | null {
+  if (!app) {
+    return null
+  }
   if (!functions) {
-    functions = getFunctions(getFirebaseApp())
+    const firebaseApp = getFirebaseApp()
+    if (!firebaseApp) {
+      return null
+    }
+    functions = getFunctions(firebaseApp)
   }
   return functions
 }
 
 /**
  * Get Firebase Analytics instance
+ * @returns Analytics instance or null (not available in SSR or not initialized)
  */
 export function getFirebaseAnalytics(): Analytics | null {
+  if (!app) {
+    return null
+  }
   if (!analytics && typeof window !== 'undefined') {
-    analytics = getAnalytics(getFirebaseApp())
+    const firebaseApp = getFirebaseApp()
+    if (!firebaseApp) {
+      return null
+    }
+    analytics = getAnalytics(firebaseApp)
   }
   return analytics
 }
 
 /**
  * Firebase Instances
- * All Firebase service instances
+ * All Firebase service instances (may be null if not initialized)
  */
 export interface FirebaseInstances {
   app: FirebaseApp
-  auth: Auth
-  db: Firestore
-  storage: FirebaseStorage
-  functions: Functions
+  auth: Auth | null
+  db: Firestore | null
+  storage: FirebaseStorage | null
+  functions: Functions | null
   analytics: Analytics | null
 }
 
 /**
  * Get all Firebase instances
+ * @returns FirebaseInstances or null if not initialized
  */
-export function getFirebaseInstances(): FirebaseInstances {
+export function getFirebaseInstances(): FirebaseInstances | null {
+  const app = getFirebaseApp()
+  if (!app) {
+    return null
+  }
   return {
-    app: getFirebaseApp(),
+    app,
     auth: getFirebaseAuth(),
     db: getFirebaseDB(),
     storage: getFirebaseStorage(),
@@ -137,5 +196,9 @@ export function getFirebaseInstances(): FirebaseInstances {
   }
 }
 
-// Export singleton instances for convenience
-export { app, auth, db, storage, functions, analytics }
+/**
+ * Check if Firebase is initialized
+ */
+export function isFirebaseInitialized(): boolean {
+  return app !== null
+}
