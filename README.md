@@ -11,6 +11,10 @@ Comprehensive Firebase integration with Domain-Driven Design (DDD) architecture 
 - ✅ **React Hooks** - Ready-to-use presentation layer hooks
 - ✅ **Error Handling** - Domain-specific error types
 - ✅ **Zero Code Duplication** - Package-driven development ready
+- ✅ **Google & Apple OAuth** - Built-in support for Google Sign-In and Apple Sign-In
+- ✅ **Configurable Auth** - Enable/disable providers, configure scopes and custom parameters
+- ✅ **Auto User Document Creation** - Automatic Firestore user document creation with custom settings
+- ✅ **Provider Linking/Unlinking** - Link multiple auth providers to a single account
 
 ## 📦 Installation
 
@@ -62,6 +66,61 @@ const firebaseConfig = {
 }
 
 initializeFirebaseApp(firebaseConfig)
+```
+
+### 2. Configure Authentication
+
+```typescript
+import { initAuthConfig } from '@umituz/web-firebase/config'
+
+// Initialize auth configuration
+initAuthConfig({
+  // Enable/disable email/password authentication
+  emailPasswordEnabled: true,
+
+  // Enable/disable OAuth providers
+  googleEnabled: true,
+  appleEnabled: true,
+
+  // Configure Google OAuth
+  googleScopes: ['profile', 'email'],
+  googleCustomParameters: {
+    prompt: 'select_account',
+  },
+
+  // Require email verification for new users
+  requireEmailVerification: true,
+
+  // Automatically create user document in Firestore
+  autoCreateUserDocument: true,
+
+  // Default user settings
+  defaultUserSettings: {
+    theme: 'system',
+    language: 'tr',
+    timezone: 'Europe/Istanbul',
+    currency: 'TRY',
+    notifications: {
+      email: true,
+      push: true,
+      marketing: false,
+      security: true,
+      weeklyDigest: false,
+    },
+    privacy: {
+      profileVisibility: 'public',
+      showEmail: false,
+      showPhone: false,
+      dataSharing: false,
+    },
+  },
+
+  // Default subscription plan
+  defaultSubscriptionPlan: 'free',
+
+  // Session persistence
+  persistence: 'local',
+})
 ```
 
 ### 2. Use Domain Layer (Types & Interfaces)
@@ -231,6 +290,28 @@ const credential = await auth.signUp('user@example.com', 'password', 'John Doe')
 // Sign in with Google
 const credential = await auth.signInWithGoogle()
 
+// Sign in with Apple
+const credential = await auth.signInWithApple()
+
+// Sign in with redirect flow (for mobile/better UX)
+const credential = await auth.signInWithGoogle(true) // useRedirect = true
+
+// Link Google to current user
+await auth.linkGoogle()
+
+// Link Apple to current user
+await auth.linkApple()
+
+// Unlink a provider
+await auth.unlinkProvider('google.com')
+
+// Get ID token (for API calls)
+const token = await auth.getIdToken()
+const tokenForceRefresh = await auth.getIdToken(true)
+
+// Refresh ID token
+await auth.refreshToken()
+
 // Sign out
 await auth.signOut()
 
@@ -385,40 +466,100 @@ import {
 } from '@umituz/web-firebase/presentation'
 
 function MyComponent() {
-  // Auth hook
+  // Auth hook with Google & Apple OAuth
   const {
-    user: firebaseUser,
+    firebaseUser,
     user: userData,
     loading,
     error,
+    // Email/Password
     signIn,
     signUp,
+    // OAuth Providers
     signInWithGoogle,
+    signInWithApple,
+    // Provider management
+    linkGoogle,
+    linkApple,
+    unlinkProvider,
+    // Account management
     signOut,
-  } = useAuth({
-    authRepository: new AuthAdapter(),
-    userRepository: new FirestoreAdapter(),
-  })
+    sendPasswordReset,
+    resendEmailVerification,
+    updateProfile,
+    updateEmail,
+    updatePassword,
+    deleteAccount,
+    // Token management
+    getIdToken,
+    refreshToken,
+    // User data
+    refreshUser,
+    // Config
+    googleEnabled,
+    appleEnabled,
+    emailPasswordEnabled,
+  } = useAuth()
 
-  // User hook
-  const { user, loading: userLoading } = useUser({
-    userRepository: new FirestoreAdapter(),
-    userId: firebaseUser?.uid,
-  })
+  // Example: Sign in with Google
+  const handleGoogleSignIn = async () => {
+    try {
+      const user = await signInWithGoogle()
+      console.log('Signed in with Google:', user)
+    } catch (error) {
+      console.error('Sign in failed:', error)
+    }
+  }
 
-  // Storage hook
-  const {
-    uploadFile,
-    uploadImage,
-    uploadProfilePicture,
-    deleteFile,
-    uploading,
-    progress,
-    error: storageError,
-  } = useStorage({
-    fileRepository: new StorageAdapter(),
-    userId: firebaseUser?.uid,
-  })
+  // Example: Sign in with Apple
+  const handleAppleSignIn = async () => {
+    try {
+      const user = await signInWithApple()
+      console.log('Signed in with Apple:', user)
+    } catch (error) {
+      console.error('Sign in failed:', error)
+    }
+  }
+
+  // Example: Get ID token for API call
+  const makeApiCall = async () => {
+    const token = await getIdToken()
+    const response = await fetch('/api/protected', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+    return response.json()
+  }
+
+  return (
+    <div>
+      {loading ? (
+        <p>Loading...</p>
+      ) : firebaseUser ? (
+        <>
+          <p>Welcome, {userData?.profile.displayName}</p>
+          <button onClick={handleGoogleSignIn}>Re-authenticate with Google</button>
+          <button onClick={() => linkApple()}>Link Apple Account</button>
+          <button onClick={() => signOut()}>Sign Out</button>
+        </>
+      ) : (
+        <>
+          {emailPasswordEnabled && (
+            <button onClick={() => signIn('user@example.com', 'password')}>
+              Sign In with Email
+            </button>
+          )}
+          {googleEnabled && (
+            <button onClick={handleGoogleSignIn}>Sign In with Google</button>
+          )}
+          {appleEnabled && (
+            <button onClick={handleAppleSignIn}>Sign In with Apple</button>
+          )}
+        </>
+      )}
+    </div>
+  )
 }
 ```
 

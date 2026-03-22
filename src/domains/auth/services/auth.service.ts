@@ -1,162 +1,117 @@
 /**
  * Auth Service
- * @description Firebase Auth implementation of IAuthService
+ * @description Firebase Auth service with Google & Apple OAuth
+ * Facade pattern using AuthAdapter
  */
 
-import {
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  createUserWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  sendPasswordResetEmail,
-  sendEmailVerification,
-  updateProfile as updateAuthProfile,
-  updateEmail as updateAuthEmail,
-  updatePassword as updateAuthPassword,
-  reauthenticateWithCredential,
-  EmailAuthProvider,
-  UserCredential,
-} from 'firebase/auth'
-import { GoogleAuthProvider } from 'firebase/auth'
-import { getFirebaseAuth } from '../../../infrastructure/firebase/client'
-import type { IAuthService } from '../types'
+import type { UserCredential } from 'firebase/auth'
 import type { AuthUser } from '../entities'
+import type { IAuthService } from '../types'
+import { authAdapter } from '../../../infrastructure/firebase/auth.adapter'
 
+/**
+ * Auth Service
+ * Implements IAuthService interface using AuthAdapter
+ */
 class AuthService implements IAuthService {
-  private get auth() {
-    return getFirebaseAuth()
-  }
-
-  // Authentication Methods
+  // ==================== Authentication Methods ====================
 
   async signIn(email: string, password: string): Promise<UserCredential> {
-    try {
-      return await signInWithEmailAndPassword(this.auth, email, password)
-    } catch (error) {
-      throw this.handleAuthError(error)
-    }
+    return await authAdapter.signIn(email, password)
   }
 
   async signUp(email: string, password: string, displayName: string): Promise<UserCredential> {
-    try {
-      const result = await createUserWithEmailAndPassword(this.auth, email, password)
-
-      // Update profile
-      await updateAuthProfile(result.user, { displayName })
-
-      // Send email verification
-      await sendEmailVerification(result.user)
-
-      return result
-    } catch (error) {
-      throw this.handleAuthError(error)
-    }
+    return await authAdapter.signUp(email, password, displayName)
   }
 
-  async signInWithGoogle(): Promise<UserCredential> {
-    try {
-      const provider = new GoogleAuthProvider()
-      provider.addScope('profile')
-      provider.addScope('email')
+  /**
+   * Sign in with Google
+   */
+  async signInWithGoogle(useRedirect = false): Promise<UserCredential> {
+    return await authAdapter.signInWithGoogle(useRedirect)
+  }
 
-      return await signInWithPopup(this.auth, provider)
-    } catch (error) {
-      throw this.handleAuthError(error)
-    }
+  /**
+   * Sign in with Apple
+   */
+  async signInWithApple(useRedirect = false): Promise<UserCredential> {
+    return await authAdapter.signInWithApple(useRedirect)
   }
 
   async signOut(): Promise<void> {
-    try {
-      await firebaseSignOut(this.auth)
-    } catch (error) {
-      throw new Error('Sign out failed')
-    }
+    await authAdapter.signOut()
   }
 
   async sendPasswordReset(email: string): Promise<void> {
-    try {
-      await sendPasswordResetEmail(this.auth, email)
-    } catch (error) {
-      throw this.handleAuthError(error)
-    }
+    await authAdapter.sendPasswordReset(email)
   }
 
   async resendEmailVerification(): Promise<void> {
-    try {
-      const user = this.auth.currentUser
-      if (!user) {
-        throw new Error('No user logged in')
-      }
-      await sendEmailVerification(user)
-    } catch (error) {
-      throw new Error('Failed to resend verification')
-    }
+    await authAdapter.resendEmailVerification()
   }
 
-  // Profile Management
+  // ==================== Profile Management ====================
 
   async updateProfile(updates: { displayName?: string; photoURL?: string }): Promise<void> {
-    try {
-      const user = this.auth.currentUser
-      if (!user) {
-        throw new Error('No user logged in')
-      }
-
-      await updateAuthProfile(user, updates)
-    } catch (error) {
-      throw new Error('Profile update failed')
-    }
+    await authAdapter.updateProfile(updates)
   }
 
   async updateEmail(newEmail: string, password: string): Promise<void> {
-    try {
-      const user = this.auth.currentUser
-      if (!user || !user.email) {
-        throw new Error('No user logged in')
-      }
-
-      const credential = EmailAuthProvider.credential(user.email, password)
-      await reauthenticateWithCredential(user, credential)
-      await updateAuthEmail(user, newEmail)
-    } catch (error) {
-      throw new Error('Email update failed')
-    }
+    await authAdapter.updateEmail(newEmail, password)
   }
 
   async updatePassword(currentPassword: string, newPassword: string): Promise<void> {
-    try {
-      const user = this.auth.currentUser
-      if (!user || !user.email) {
-        throw new Error('No user logged in')
-      }
-
-      const credential = EmailAuthProvider.credential(user.email, currentPassword)
-      await reauthenticateWithCredential(user, credential)
-      await updateAuthPassword(user, newPassword)
-    } catch (error) {
-      throw new Error('Password update failed')
-    }
+    await authAdapter.updatePassword(currentPassword, newPassword)
   }
 
   async deleteAccount(password: string): Promise<void> {
-    try {
-      const user = this.auth.currentUser
-      if (!user || !user.email) {
-        throw new Error('No user logged in')
-      }
-
-      const credential = EmailAuthProvider.credential(user.email, password)
-      await reauthenticateWithCredential(user, credential)
-      await user.delete()
-    } catch (error) {
-      throw new Error('Account deletion failed')
-    }
+    await authAdapter.deleteAccount(password)
   }
 
-  // State Management
+  // ==================== Provider Linking ====================
+
+  /**
+   * Link Google to current user
+   */
+  async linkGoogle(): Promise<UserCredential> {
+    return await authAdapter.linkGoogle()
+  }
+
+  /**
+   * Link Apple to current user
+   */
+  async linkApple(): Promise<UserCredential> {
+    return await authAdapter.linkApple()
+  }
+
+  /**
+   * Unlink a provider from current user
+   */
+  async unlinkProvider(providerId: string): Promise<void> {
+    await authAdapter.unlinkProvider(providerId)
+  }
+
+  // ==================== Token Management ====================
+
+  /**
+   * Get ID Token
+   */
+  async getIdToken(forceRefresh = false): Promise<string> {
+    return await authAdapter.getIdToken(forceRefresh)
+  }
+
+  /**
+   * Refresh ID Token
+   */
+  async refreshToken(): Promise<void> {
+    await authAdapter.refreshToken()
+  }
+
+  // ==================== State Management ====================
 
   getCurrentUser(): AuthUser | null {
-    const user = this.auth.currentUser
+    const user = authAdapter.getCurrentUser()
+
     if (!user) return null
 
     return {
@@ -180,7 +135,7 @@ class AuthService implements IAuthService {
     callback: (user: AuthUser | null) => void,
     onError?: (error: Error) => void
   ): () => void {
-    return this.auth.onAuthStateChanged(
+    return authAdapter.onAuthStateChanged(
       (user) => {
         callback(
           user
@@ -202,42 +157,8 @@ class AuthService implements IAuthService {
             : null
         )
       },
-      (error) => {
-        onError?.(error as Error)
-      }
+      onError
     )
-  }
-
-  /**
-   * Handle Firebase Auth errors
-   */
-  private handleAuthError(error: unknown): Error {
-    if (error instanceof Error && 'code' in error) {
-      const code = (error as { code: string }).code
-
-      switch (code) {
-        case 'auth/user-not-found':
-        case 'auth/wrong-password':
-        case 'auth/invalid-credential':
-          return new Error('Invalid credentials')
-        case 'auth/email-already-in-use':
-          return new Error('Email already in use')
-        case 'auth/weak-password':
-          return new Error('Password is too weak')
-        case 'auth/invalid-email':
-          return new Error('Invalid email')
-        case 'auth/user-disabled':
-          return new Error('Account disabled')
-        case 'auth/too-many-requests':
-          return new Error('Too many requests')
-        case 'auth/popup-closed-by-user':
-          return new Error('Sign in cancelled')
-        default:
-          return new Error(`Auth error: ${code}`)
-      }
-    }
-
-    return new Error('Unknown auth error')
   }
 }
 

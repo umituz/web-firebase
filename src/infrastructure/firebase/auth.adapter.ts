@@ -1,7 +1,6 @@
 /**
  * Auth Adapter
- * @description Firebase Auth implementation of IAuthRepository
- * Migrated from: /Users/umituz/Desktop/github/umituz/apps/web/app-growth-factory/src/domains/firebase/services/auth.ts
+ * @description Firebase Auth implementation with Google & Apple OAuth support
  */
 
 import {
@@ -18,21 +17,40 @@ import {
   EmailAuthProvider,
   User as FirebaseUser,
   UserCredential,
+  GoogleAuthProvider,
+  OAuthProvider,
+  signInWithRedirect,
+  getRedirectResult,
+  linkWithPopup,
+  unlink as firebaseUnlink,
 } from 'firebase/auth'
-import { GoogleAuthProvider } from 'firebase/auth'
 import { getFirebaseAuth } from './client'
 import type { IAuthRepository } from '../../domain/interfaces/auth.repository.interface'
 import type { User } from '../../domain/entities/user.entity'
 import { createAuthError, AuthErrorCode } from '../../domain/errors/auth.errors'
+import { getAuthConfig } from '../../domain/config/auth.config'
 
+/**
+ * Auth Adapter
+ * Implements IAuthRepository with Google & Apple OAuth support
+ */
 export class AuthAdapter implements IAuthRepository {
   private get auth() {
     return getFirebaseAuth()
   }
 
-  // Authentication Methods
+  private config = getAuthConfig()
+
+  // ==================== Authentication Methods ====================
 
   async signIn(email: string, password: string): Promise<UserCredential> {
+    if (!this.config.isEmailPasswordEnabled()) {
+      throw createAuthError(
+        AuthErrorCode.UNKNOWN,
+        'Email/password authentication is disabled'
+      )
+    }
+
     try {
       return await signInWithEmailAndPassword(this.auth, email, password)
     } catch (error) {
@@ -41,14 +59,23 @@ export class AuthAdapter implements IAuthRepository {
   }
 
   async signUp(email: string, password: string, displayName: string): Promise<UserCredential> {
+    if (!this.config.isEmailPasswordEnabled()) {
+      throw createAuthError(
+        AuthErrorCode.UNKNOWN,
+        'Email/password authentication is disabled'
+      )
+    }
+
     try {
       const result = await createUserWithEmailAndPassword(this.auth, email, password)
 
       // Update profile
       await updateAuthProfile(result.user, { displayName })
 
-      // Send email verification
-      await sendEmailVerification(result.user)
+      // Send email verification if required
+      if (this.config.getConfig().requireEmailVerification) {
+        await sendEmailVerification(result.user)
+      }
 
       return result
     } catch (error) {
@@ -56,13 +83,72 @@ export class AuthAdapter implements IAuthRepository {
     }
   }
 
-  async signInWithGoogle(): Promise<UserCredential> {
+  /**
+   * Sign in with Google
+   * @param useRedirect - Whether to use redirect flow instead of popup (default: false)
+   */
+  async signInWithGoogle(useRedirect = false): Promise<UserCredential> {
+    if (!this.config.isGoogleEnabled()) {
+      throw createAuthError(
+        AuthErrorCode.UNKNOWN,
+        'Google authentication is disabled'
+      )
+    }
+
     try {
       const provider = new GoogleAuthProvider()
-      provider.addScope('profile')
-      provider.addScope('email')
+      const config = this.config.getConfig()
 
-      return await signInWithPopup(this.auth, provider)
+      // Add scopes
+      if (config.googleScopes) {
+        config.googleScopes.forEach((scope) => provider.addScope(scope))
+      }
+
+      // Add custom parameters
+      if (config.googleCustomParameters) {
+        provider.setCustomParameters(config.googleCustomParameters)
+      }
+
+      if (useRedirect) {
+        await signInWithRedirect(this.auth, provider)
+        const result = await getRedirectResult(this.auth)
+        if (!result) {
+          throw createAuthError(AuthErrorCode.UNKNOWN, 'No redirect result found')
+        }
+        return result
+      } else {
+        return await signInWithPopup(this.auth, provider)
+      }
+    } catch (error) {
+      throw this.handleAuthError(error)
+    }
+  }
+
+  /**
+   * Sign in with Apple
+   * @param useRedirect - Whether to use redirect flow instead of popup (default: false)
+   */
+  async signInWithApple(useRedirect = false): Promise<UserCredential> {
+    if (!this.config.isAppleEnabled()) {
+      throw createAuthError(
+        AuthErrorCode.UNKNOWN,
+        'Apple authentication is disabled'
+      )
+    }
+
+    try {
+      const provider = new OAuthProvider('apple.com')
+
+      if (useRedirect) {
+        await signInWithRedirect(this.auth, provider)
+        const result = await getRedirectResult(this.auth)
+        if (!result) {
+          throw createAuthError(AuthErrorCode.UNKNOWN, 'No redirect result found')
+        }
+        return result
+      } else {
+        return await signInWithPopup(this.auth, provider)
+      }
     } catch (error) {
       throw this.handleAuthError(error)
     }
@@ -96,7 +182,7 @@ export class AuthAdapter implements IAuthRepository {
     }
   }
 
-  // Profile Management
+  // ==================== Profile Management ====================
 
   async updateProfile(
     updates: Partial<Pick<User['profile'], 'displayName' | 'photoURL'>>
@@ -158,7 +244,77 @@ export class AuthAdapter implements IAuthRepository {
     }
   }
 
-  // State Management
+  // ==================== Provider Linking ====================
+
+  /**
+   * Link Google to current user
+   */
+  async linkGoogle(): Promise<UserCredential> {
+    if (!this.config.isGoogleEnabled()) {
+      throw createAuthError(AuthErrorCode.UNKNOWN, 'Google authentication is disabled')
+    }
+
+    try {
+      const user = this.auth.currentUser
+      if (!user) {
+        throw createAuthError(AuthErrorCode.UNAUTHENTICATED, 'No user logged in')
+      }
+
+      const provider = new GoogleAuthProvider()
+      const config = this.config.getConfig()
+
+      if (config.googleScopes) {
+        config.googleScopes.forEach((scope) => provider.addScope(scope))
+      }
+
+      if (config.googleCustomParameters) {
+        provider.setCustomParameters(config.googleCustomParameters)
+      }
+
+      return await linkWithPopup(user, provider)
+    } catch (error) {
+      throw this.handleAuthError(error)
+    }
+  }
+
+  /**
+   * Link Apple to current user
+   */
+  async linkApple(): Promise<UserCredential> {
+    if (!this.config.isAppleEnabled()) {
+      throw createAuthError(AuthErrorCode.UNKNOWN, 'Apple authentication is disabled')
+    }
+
+    try {
+      const user = this.auth.currentUser
+      if (!user) {
+        throw createAuthError(AuthErrorCode.UNAUTHENTICATED, 'No user logged in')
+      }
+
+      const provider = new OAuthProvider('apple.com')
+      return await linkWithPopup(user, provider)
+    } catch (error) {
+      throw this.handleAuthError(error)
+    }
+  }
+
+  /**
+   * Unlink a provider from current user
+   */
+  async unlinkProvider(providerId: string): Promise<FirebaseUser> {
+    try {
+      const user = this.auth.currentUser
+      if (!user) {
+        throw createAuthError(AuthErrorCode.UNAUTHENTICATED, 'No user logged in')
+      }
+
+      return await firebaseUnlink(user, providerId)
+    } catch (error) {
+      throw createAuthError(AuthErrorCode.UNKNOWN, 'Failed to unlink provider', error)
+    }
+  }
+
+  // ==================== State Management ====================
 
   getCurrentUser(): FirebaseUser | null {
     return this.auth.currentUser
@@ -168,8 +324,37 @@ export class AuthAdapter implements IAuthRepository {
     return this.auth.onAuthStateChanged(callback)
   }
 
-  // Note: User document operations should be handled by UserAdapter
-  // These methods are part of IAuthRepository interface but should be implemented separately
+  // ==================== Token Management ====================
+
+  async getIdToken(forceRefresh = false): Promise<string> {
+    try {
+      const user = this.auth.currentUser
+      if (!user) {
+        throw createAuthError(AuthErrorCode.UNAUTHENTICATED, 'No user logged in')
+      }
+
+      return await user.getIdToken(forceRefresh)
+    } catch (error) {
+      throw createAuthError(AuthErrorCode.UNKNOWN, 'Failed to get ID token', error)
+    }
+  }
+
+  async refreshToken(): Promise<void> {
+    try {
+      const user = this.auth.currentUser
+      if (!user) {
+        throw createAuthError(AuthErrorCode.UNAUTHENTICATED, 'No user logged in')
+      }
+
+      await user.getIdToken(true)
+    } catch (error) {
+      throw createAuthError(AuthErrorCode.UNKNOWN, 'Failed to refresh token', error)
+    }
+  }
+
+  // ==================== Note ====================
+  // User document operations should be handled by UserAdapter
+
   async createUserDocument(
     _userId: string,
     _data: Partial<Omit<User, 'profile'>> & { email: string; displayName: string }
@@ -180,6 +365,8 @@ export class AuthAdapter implements IAuthRepository {
   async updateLastLogin(_userId: string): Promise<void> {
     throw new Error('updateLastLogin should be handled by UserAdapter')
   }
+
+  // ==================== Error Handling ====================
 
   /**
    * Handle Firebase Auth errors
@@ -218,3 +405,6 @@ export class AuthAdapter implements IAuthRepository {
     return createAuthError(AuthErrorCode.UNKNOWN, 'Unknown auth error', error)
   }
 }
+
+// Export singleton instance
+export const authAdapter = new AuthAdapter()

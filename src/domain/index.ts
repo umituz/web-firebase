@@ -28,3 +28,6 @@ export * from './interfaces/file.repository.interface'
 // Errors
 export * from './errors/auth.errors'
 export * from './errors/repository.errors'
+
+// Config
+export * from './config/auth.config'

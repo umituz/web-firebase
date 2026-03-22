@@ -5,6 +5,259 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.1] - 2026-03-22
+
+### 🐛 Fixed
+
+- **Environment Variables** - Changed from `process.env` to `import.meta.env` for Vite compatibility
+- Firebase configuration now properly reads environment variables in Vite applications
+
+### 🔧 Dependencies
+
+**No changes** - All dependencies remain the same
+
+---
+
+## [3.2.0] - 2026-03-22
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [3.2.0] - 2026-03-22
+
+### ✨ Added
+
+#### Authentication Configuration
+- **AuthConfig** - Centralized configuration system for authentication
+- **AuthConfigManager** - Singleton manager for auth configuration
+- **initAuthConfig()** - Initialize auth with custom settings
+- `googleEnabled` - Enable/disable Google OAuth
+- `appleEnabled` - Enable/disable Apple OAuth
+- `googleScopes` - Configure custom Google OAuth scopes
+- `googleCustomParameters` - Set custom parameters for Google OAuth
+
+#### Google & Apple OAuth Support
+- **Google Sign-In** - Full Google OAuth provider support
+- **Apple Sign-In** - Full Apple OAuth provider support
+- Redirect flow support for better mobile UX
+- Custom scopes and parameters support
+
+#### Provider Linking/Unlinking
+- **linkGoogle()** - Link Google account to current user
+- **linkApple()** - Link Apple account to current user
+- **unlinkProvider()** - Unlink a provider from current user
+- Support for multiple auth providers per account
+
+#### Token Management
+- **getIdToken()** - Get ID token with optional force refresh
+- **refreshToken()** - Force refresh ID token
+
+#### Enhanced useAuth Hook
+- `signInWithGoogle(useRedirect)` - Google sign-in with redirect option
+- `signInWithApple(useRedirect)` - Apple sign-in with redirect option
+- Provider management: `linkGoogle()`, `linkApple()`, `unlinkProvider()`
+- Token management: `getIdToken()`, `refreshToken()`
+- Account management: `updateEmail()`, `updatePassword()`, `deleteAccount()`
+- Config access: `googleEnabled`, `appleEnabled`, `emailPasswordEnabled`
+
+#### New Subpath Export
+- `@umituz/web-firebase/config` - Direct import of auth configuration
+
+### 🔄 Changed
+
+- **AuthAdapter** - Simplified for Google & Apple only
+- **AuthService** - Now uses AuthAdapter internally (facade pattern)
+- **useAuth** - Complete rewrite with Google & Apple support
+- Configuration is now centralized and type-safe
+- Better error handling for Google & Apple OAuth
+
+### 📝 Usage Examples
+
+#### Basic Configuration
+
+```typescript
+import { initAuthConfig } from '@umituz/web-firebase/config'
+
+initAuthConfig({
+  googleEnabled: true,
+  appleEnabled: true,
+  googleScopes: ['profile', 'email'],
+  googleCustomParameters: {
+    prompt: 'select_account',
+  },
+  autoCreateUserDocument: true,
+  defaultUserSettings: {
+    theme: 'dark',
+    language: 'tr',
+  },
+})
+```
+
+#### OAuth Sign In
+
+```typescript
+import { useAuth } from '@umituz/web-firebase/presentation'
+
+function Login() {
+  const { signInWithGoogle, signInWithApple } = useAuth()
+
+  return (
+    <>
+      <button onClick={() => signInWithGoogle()}>Google</button>
+      <button onClick={() => signInWithApple()}>Apple</button>
+    </>
+  )
+}
+```
+
+#### Provider Linking
+
+```typescript
+const { linkGoogle, linkApple, unlinkProvider } = useAuth()
+
+// Link Google to existing account
+await linkGoogle()
+
+// Link Apple to existing account
+await linkApple()
+
+// Unlink Google
+await unlinkProvider('google.com')
+```
+
+### 🔧 Dependencies
+
+**No changes** - All dependencies remain the same
+
+---
+
+## [3.0.1] - 2026-03-21
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [3.1.0] - 2026-03-22
+
+### ✨ Added
+
+#### Authentication Configuration
+- **AuthConfig** - Centralized configuration system for authentication
+- **AuthConfigManager** - Singleton manager for auth configuration
+- **initAuthConfig()** - Initialize auth with custom settings
+- **OAuthProviderType** - Type for all supported OAuth providers
+
+#### Multiple OAuth Providers
+- **Google** - Google OAuth provider (previously supported)
+- **Facebook** - Facebook OAuth provider
+- **GitHub** - GitHub OAuth provider
+- **Twitter** - Twitter OAuth provider
+- **Apple** - Apple Sign In provider
+- **Microsoft** - Microsoft Azure AD provider
+- **Yahoo** - Yahoo OAuth provider
+- **LinkedIn** - LinkedIn OAuth provider
+
+#### Auth Configuration Features
+- Enable/disable specific OAuth providers
+- Configure custom scopes for each provider
+- Set custom parameters for OAuth flows
+- Enable/disable email/password authentication
+- Configure email verification requirement
+- Auto-create user documents in Firestore
+- Set default user settings (theme, language, timezone, currency, notifications, privacy)
+- Configure default subscription plan
+- Token refresh settings
+- Session persistence options
+
+#### Provider Linking/Unlinking
+- **linkOAuthProvider()** - Link OAuth provider to current user
+- **unlinkProvider()** - Unlink a provider from current user
+- Support for multiple auth providers per account
+
+#### Token Management
+- **getIdToken()** - Get ID token with optional force refresh
+- **refreshToken()** - Force refresh ID token
+
+#### Enhanced useAuth Hook
+- New OAuth methods: `signInWithFacebook()`, `signInWithGithub()`, `signInWithTwitter()`, `signInWithApple()`, `signInWithMicrosoft()`
+- Generic `signInWithOAuth(provider, useRedirect)` method
+- Provider management: `linkProvider()`, `unlinkProvider()`
+- Token management: `getIdToken()`, `refreshToken()`
+- Account management: `updateEmail()`, `updatePassword()`, `deleteAccount()`
+- Config access: `enabledProviders`, `isEmailPasswordEnabled`
+
+#### New Subpath Export
+- `@umituz/web-firebase/config` - Direct import of auth configuration
+
+### 🔄 Changed
+
+- **AuthAdapter** - Enhanced with OAuth provider factory pattern
+- **AuthService** - Now uses AuthAdapter internally (facade pattern)
+- **useAuth** - Complete rewrite with all new features
+- Configuration is now centralized and type-safe
+- Better error handling for all OAuth providers
+
+### 📝 Usage Examples
+
+#### Basic Configuration
+
+```typescript
+import { initAuthConfig } from '@umituz/web-firebase/config'
+
+initAuthConfig({
+  oauthProviders: {
+    google: { enabled: true, scopes: ['profile', 'email'] },
+    facebook: { enabled: true },
+    github: { enabled: true },
+  },
+  autoCreateUserDocument: true,
+  defaultUserSettings: {
+    theme: 'dark',
+    language: 'tr',
+  },
+})
+```
+
+#### OAuth Sign In
+
+```typescript
+import { useAuth } from '@umituz/web-firebase/presentation'
+
+function Login() {
+  const { signInWithGoogle, signInWithFacebook, signInWithGithub } = useAuth()
+
+  return (
+    <>
+      <button onClick={() => signInWithGoogle()}>Google</button>
+      <button onClick={() => signInWithFacebook()}>Facebook</button>
+      <button onClick={() => signInWithGithub()}>GitHub</button>
+    </>
+  )
+}
+```
+
+#### Provider Linking
+
+```typescript
+const { linkProvider, unlinkProvider } = useAuth()
+
+// Link Facebook to existing account
+await linkProvider('facebook')
+
+// Unlink Google
+await unlinkProvider('google.com')
+```
+
+### 🔧 Dependencies
+
+**No changes** - All dependencies remain the same
+
+---
+
+## [3.0.1] - 2026-03-21
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
 ## [2.0.0] - 2026-03-21
 
 ### ⚠️ BREAKING CHANGES
