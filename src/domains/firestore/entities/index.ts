@@ -78,8 +78,8 @@ export interface User {
   readonly profile: UserProfile
   settings: UserSettings
   subscription: UserSubscription
-  connectedAccounts?: any[]
-  content?: any[]
-  analytics?: any
-  credits?: any
+  connectedAccounts?: Record<string, unknown>[]
+  content?: Record<string, unknown>[]
+  analytics?: Record<string, unknown>
+  credits?: Record<string, unknown>
 }

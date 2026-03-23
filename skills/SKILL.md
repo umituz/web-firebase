@@ -31,9 +31,12 @@ npm install @umituz/web-firebase@latest
 │   │   ├── firestore.adapter.ts
 │   │   └── storage.adapter.ts
 │   ├── services/
-│   │   ├── firestore.repository.ts  # Base repository
-│   │   └── query.builder.ts       # Query builder
+│   │   └── firestore.repository.ts  # Base repository
 │   └── utils/
+├── domains/             # Domain layer with business logic
+│   ├── firestore/
+│   │   └── services/
+│   │       └── query-builder.service.ts  # Query builder
 └── application/         # Use cases & DTOs
 ```
 

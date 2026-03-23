@@ -9,10 +9,13 @@ import {
   deleteDoc,
   query,
   writeBatch,
+  onSnapshot,
   type QueryConstraint,
   type DocumentData,
   type Firestore,
   type CollectionReference,
+  type DocumentSnapshot,
+  type QuerySnapshot,
 } from 'firebase/firestore';
 import { getFirebaseDB } from '../firebase/client';
 import type { IBaseRepository } from '../../domain/interfaces/repository.interface';
@@ -376,12 +379,11 @@ export class FirestoreRepository<T extends DocumentData> implements IBaseReposit
     onError?: (error: Error) => void,
     parentPath?: string
   ): () => void {
-    const { onSnapshot } = require('firebase/firestore');
     const docRef = this.getDocRef(id, parentPath);
 
     const unsubscribe = onSnapshot(
       docRef,
-      (snap: any) => {
+      (snap: DocumentSnapshot<DocumentData>) => {
         if (snap.exists()) {
           callback({ id: snap.id, ...snap.data() } as unknown as T);
         } else {
@@ -408,13 +410,12 @@ export class FirestoreRepository<T extends DocumentData> implements IBaseReposit
     onError?: (error: Error) => void,
     parentPath?: string
   ): () => void {
-    const { onSnapshot, query } = require('firebase/firestore');
     const q = query(this.getCollection(parentPath), ...constraints);
 
     const unsubscribe = onSnapshot(
       q,
-      (snap: any) => {
-        const data = snap.docs.map((d: any) => ({
+      (snap: QuerySnapshot<DocumentData>) => {
+        const data = snap.docs.map((d: DocumentSnapshot<DocumentData>) => ({
           id: d.id,
           ...d.data(),
         } as unknown as T));

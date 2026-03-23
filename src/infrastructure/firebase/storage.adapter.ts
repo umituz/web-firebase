@@ -201,7 +201,7 @@ export class StorageAdapter implements IFileRepository {
     }
   }
 
-  async queryFiles(userId: string, _filters?: any): Promise<{ files: FileMetadata[]; totalCount: number; hasMore: boolean }> {
+  async queryFiles(userId: string, _filters?: Record<string, unknown>): Promise<{ files: FileMetadata[]; totalCount: number; hasMore: boolean }> {
     const userRef = ref(this.storage, `users/${userId}`)
     const result = await listAll(userRef)
 
