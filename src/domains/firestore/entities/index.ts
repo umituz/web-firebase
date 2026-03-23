@@ -3,6 +3,9 @@
  * @description Core Firestore-related entities
  */
 
+// Re-export base entity
+export * from './base-firestore.entity';
+
 /**
  * User Profile Value Object
  * Immutable user profile data

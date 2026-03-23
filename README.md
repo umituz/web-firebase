@@ -4,17 +4,32 @@ Comprehensive Firebase integration with Domain-Driven Design (DDD) architecture 
 
 ## 🚀 Features
 
+### Core Features
 - ✅ **DDD Architecture** - Clean separation of concerns with 4 distinct layers
 - ✅ **Type-Safe** - Full TypeScript support with strict typing
 - ✅ **Repository Pattern** - Abstract data access from business logic
-- ✅ **Use Cases** - Orchestrated business logic operations
-- ✅ **React Hooks** - Ready-to-use presentation layer hooks
 - ✅ **Error Handling** - Domain-specific error types
 - ✅ **Zero Code Duplication** - Package-driven development ready
+
+### Firestore Services (NEW v3.6.0)
+- ✅ **QueryBuilder** - Fluent API for complex queries
+- ✅ **TransactionManager** - Atomic multi-document operations
+- ✅ **BatchOperationManager** - Optimized batch operations with auto-chunking
+- ✅ **RealTimeSubscriptionManager** - Real-time updates with auto-cleanup
+- ✅ **BaseFirestoreEntity** - Audit fields and versioning
+- ✅ **FirestoreError Domain** - Specific error types for better debugging
+
+### Auth Features
 - ✅ **Google & Apple OAuth** - Built-in support for Google Sign-In and Apple Sign-In
 - ✅ **Configurable Auth** - Enable/disable providers, configure scopes and custom parameters
 - ✅ **Auto User Document Creation** - Automatic Firestore user document creation with custom settings
 - ✅ **Provider Linking/Unlinking** - Link multiple auth providers to a single account
+
+### Firebase Exports
+- ✅ **All Firestore Functions** - Exported from single package for convenience
+- ✅ **Query Functions** - where, orderBy, limit, etc.
+- ✅ **Timestamp Functions** - serverTimestamp
+- ✅ **Transaction Functions** - runTransaction, writeBatch
 
 ## 📦 Installation
 
@@ -684,6 +699,147 @@ src/
 - **SaaS** - Subscription management, user settings, analytics
 - **Chat Apps** - Real-time messaging, user presence
 - **Blogs/CMS** - Content management, media uploads
+
+## 🔥 Firestore Services (v3.6.0)
+
+### QueryBuilder - Fluent Query API
+
+```typescript
+import { createQueryBuilder } from '@umituz/web-firebase/firestore'
+
+// Build complex queries with clean syntax
+const query = createQueryBuilder()
+  .equals('userId', userId)
+  .equals('isActive', true)
+  .greaterThanOrEqualTo('createdAt', startDate.toISOString())
+  .descending('updatedAt')
+  .limitTo(20)
+  .build()
+
+const users = await userRepository.getAll(query)
+```
+
+### TransactionManager - Atomic Operations
+
+```typescript
+import { transactionManager } from '@umituz/web-firebase/firestore'
+
+// Atomic read-modify-write operation
+await transactionManager.atomicUpdate('agencies', agencyId, (current) => {
+  if (!current || current.ownerId !== fromUserId) {
+    throw new Error('Not authorized')
+  }
+  return {
+    ...current,
+    ownerId: toUserId,
+    transferredAt: new Date().toISOString()
+  }
+})
+```
+
+### BatchOperationManager - Bulk Operations
+
+```typescript
+import { batchOperationManager } from '@umituz/web-firebase/firestore'
+
+// Delete multiple documents efficiently
+await batchOperationManager.deleteMultiple('agencies', agencyIds)
+
+// Update multiple documents
+const updates = agencyIds.map(id => ({
+  type: 'update' as const,
+  collection: 'agencies',
+  documentId: id,
+  data: { status: 'archived' }
+}))
+
+await batchOperationManager.executeBatch(updates, {
+  maxOperations: 500,
+  batchDelay: 100
+})
+```
+
+### RealTimeSubscriptionManager - Live Updates
+
+```typescript
+import { realTimeSubscriptionManager } from '@umituz/web-firebase/firestore'
+
+// Subscribe to document changes
+const unsubscribe = realTimeSubscriptionManager.subscribeToDocument(
+  'users',
+  userId,
+  (user) => console.log('User updated:', user),
+  (error) => console.error('Error:', error)
+)
+
+// Auto-cleanup on unmount
+return () => unsubscribe()
+```
+
+### Enhanced FirestoreRepository
+
+```typescript
+import { FirestoreRepository } from '@umituz/web-firebase/repository'
+
+class UserRepository extends FirestoreRepository<User> {
+  constructor() {
+    super('users')
+  }
+
+  // Pagination with cursor
+  async getPaginated(pageSize: number, startAfter?: User) {
+    return this.paginate([], pageSize, startAfter)
+  }
+
+  // Real-time updates
+  subscribeToUser(userId: string, callback: (user: User | null) => void) {
+    return this.watchById(userId, callback)
+  }
+
+  // Upsert (create or update)
+  async syncUser(userId: string, data: Omit<User, 'id'>) {
+    return this.upsert(userId, data)
+  }
+
+  // Count documents
+  async countActiveUsers() {
+    const query = createQueryBuilder()
+      .equals('isActive', true)
+      .build()
+    return this.count(query)
+  }
+}
+```
+
+## 📦 All Firebase Exports
+
+All commonly used Firestore functions are exported from `@umituz/web-firebase`:
+
+```typescript
+import {
+  // Query functions
+  collection, doc, query,
+  where, orderBy, limit,
+  startAfter, startAt, endAt, endBefore,
+
+  // CRUD operations
+  getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc,
+
+  // Real-time
+  onSnapshot,
+
+  // Transactions & Batches
+  runTransaction, writeBatch,
+
+  // Timestamp
+  serverTimestamp,
+
+  // Types
+  type Firestore, QueryConstraint, DocumentData,
+  type CollectionReference, DocumentReference, Query
+
+} from '@umituz/web-firebase'
+```
 
 ## 📝 License
 
