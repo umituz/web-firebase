@@ -11,7 +11,10 @@
   "exports": {
     ".": "./src/index.ts",
     "./config": "./src/domain/config/auth.config.ts",
-    "./storage": "./src/infrastructure/firebase/storage.adapter.ts"
+    "./storage": "./src/infrastructure/firebase/storage.adapter.ts",
+    "./auth": "./src/domains/auth/index.ts",
+    "./firestore": "./src/domains/firestore/index.ts",
+    "./anonymous": "./src/domains/anonymous/index.ts"
   },
   "files": [
     "src"

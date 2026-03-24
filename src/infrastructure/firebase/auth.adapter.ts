@@ -23,6 +23,7 @@ import {
   getRedirectResult,
   linkWithPopup,
   unlink as firebaseUnlink,
+  signInAnonymously,
 } from 'firebase/auth'
 import { getFirebaseAuth } from './client'
 import type { User } from '../../domain/entities/user.entity'
@@ -157,6 +158,17 @@ export class AuthAdapter {
       } else {
         return await signInWithPopup(this.auth, provider)
       }
+    } catch (error) {
+      throw this.handleAuthError(error)
+    }
+  }
+
+  /**
+   * Sign in anonymously
+   */
+  async signInAnonymously(): Promise<UserCredential> {
+    try {
+      return await signInAnonymously(this.auth)
     } catch (error) {
       throw this.handleAuthError(error)
     }
@@ -402,4 +414,8 @@ export class AuthAdapter {
     return createAuthError(AuthErrorCode.UNKNOWN, 'Unknown auth error', error)
   }
 }
+
+// Export singleton instance
+export const authAdapter = new AuthAdapter()
+
 
