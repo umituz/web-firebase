@@ -37,6 +37,29 @@ export { FirebaseProvider } from './infrastructure/components/FirebaseProvider'
 // ============================================================
 
 export { FirestoreRepository } from './domains/firestore/infrastructure/firestore.repository'
+export {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  limit,
+  startAt,
+  startAfter,
+  endAt,
+  endBefore,
+  increment,
+  arrayUnion,
+  arrayRemove,
+  serverTimestamp,
+  type DocumentData,
+  type QueryConstraint,
+} from 'firebase/firestore'
 
 // ============================================================
 // STORAGE SERVICE
