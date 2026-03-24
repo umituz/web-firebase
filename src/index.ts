@@ -67,7 +67,7 @@ export {
 // STORAGE SERVICE
 // ============================================================
 
-export { StorageAdapter as StorageService } from './domains/storage/infrastructure/storage.adapter'
+export { StorageAdapter, storageService } from './domains/storage/infrastructure/storage.adapter'
 
 // ============================================================
 // UTILITIES

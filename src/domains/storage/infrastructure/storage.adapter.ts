@@ -287,3 +287,6 @@ export class StorageAdapter {
     return 'other'
   }
 }
+
+// Export singleton instance
+export const storageService = new StorageAdapter()
