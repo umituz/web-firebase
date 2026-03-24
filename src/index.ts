@@ -57,6 +57,8 @@ export {
   arrayUnion,
   arrayRemove,
   serverTimestamp,
+  runTransaction,
+  writeBatch,
   type DocumentData,
   type QueryConstraint,
 } from 'firebase/firestore'
