@@ -72,7 +72,13 @@ export class Email {
    */
   mask(): string {
     const [local, domain] = this.value.split('@')
-    if (local.length <= 2) {
+    if (local.length === 0) {
+      return `***@${domain}`
+    }
+    if (local.length === 1) {
+      return `${local[0]}***@${domain}`
+    }
+    if (local.length === 2) {
       return `${local[0]}***@${domain}`
     }
     return `${local[0]}${'*'.repeat(local.length - 2)}${local[local.length - 1]}@${domain}`

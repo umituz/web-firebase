@@ -21,11 +21,24 @@ export class UserId {
       throw createRepositoryError(RepositoryErrorCode.INVALID_DATA, 'User ID cannot be empty')
     }
 
-    // Firebase Auth UIDs are typically at least 20 characters
+    // Temporary IDs are exempt from length validation
+    if (this.isTemporary()) {
+      // Validate temporary ID format
+      const tempPattern = /^temp_[0-9]+_[a-z0-9]+$/
+      if (!tempPattern.test(this.value)) {
+        throw createRepositoryError(
+          RepositoryErrorCode.INVALID_DATA,
+          'Invalid temporary ID format'
+        )
+      }
+      return
+    }
+
+    // Firebase Auth UIDs are typically 28 characters but can vary
     if (this.value.length < 20) {
       throw createRepositoryError(
         RepositoryErrorCode.INVALID_DATA,
-        'User ID is too short (must be at least 20 characters)'
+        'User ID is too short (must be at least 20 characters for Firebase UIDs)'
       )
     }
 

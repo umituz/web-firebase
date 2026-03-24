@@ -13,6 +13,12 @@ export * from './infrastructure/firebase/client'
 // Infrastructure layer
 export * from './infrastructure'
 
+// Domains
+export * from './domains/auth'
+export * from './domains/anonymous'
+export * from './domains/firestore'
+export * from './domains/storage'
+
 // Re-export commonly used Firestore functions for convenience
 export {
   collection,

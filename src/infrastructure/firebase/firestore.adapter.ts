@@ -41,7 +41,7 @@ export class FirestoreAdapter implements IUserRepository {
         return null
       }
 
-      return snap.data() as User
+      return { id: snap.id, ...snap.data() } as User
     } catch (error) {
       throw createRepositoryError(RepositoryErrorCode.DOCUMENT_NOT_FOUND, 'User not found', error)
     }
@@ -57,7 +57,7 @@ export class FirestoreAdapter implements IUserRepository {
       }
 
       const doc = snap.docs[0]
-      return doc.data() as User
+      return { id: doc.id, ...doc.data() } as User
     } catch (error) {
       throw createRepositoryError(RepositoryErrorCode.QUERY_FAILED, 'Failed to query user', error)
     }
@@ -122,12 +122,45 @@ export class FirestoreAdapter implements IUserRepository {
   async updateSettings(userId: string, settings: Partial<User['settings']>): Promise<void> {
     try {
       const docRef = doc(this.db, this.USERS_COLLECTION, userId)
-      await updateDoc(docRef, {
-        settings: {
-          ...settings,
-          updatedAt: Date.now(),
-        } as Partial<User['settings']> & { updatedAt: number },
-      })
+
+      // Build update object with proper deep merge paths
+      const updateData: Record<string, unknown> = {}
+
+      // Update theme
+      if (settings.theme !== undefined) {
+        updateData['settings.theme'] = settings.theme
+      }
+
+      // Update language
+      if (settings.language !== undefined) {
+        updateData['settings.language'] = settings.language
+      }
+
+      // Update timezone
+      if (settings.timezone !== undefined) {
+        updateData['settings.timezone'] = settings.timezone
+      }
+
+      // Update currency
+      if (settings.currency !== undefined) {
+        updateData['settings.currency'] = settings.currency
+      }
+
+      // Update notifications (merge)
+      if (settings.notifications !== undefined) {
+        Object.entries(settings.notifications).forEach(([key, value]) => {
+          updateData[`settings.notifications.${key}`] = value
+        })
+      }
+
+      // Update privacy (merge)
+      if (settings.privacy !== undefined) {
+        Object.entries(settings.privacy).forEach(([key, value]) => {
+          updateData[`settings.privacy.${key}`] = value
+        })
+      }
+
+      await updateDoc(docRef, updateData)
     } catch (error) {
       throw createRepositoryError(RepositoryErrorCode.DOCUMENT_NOT_FOUND, 'Failed to update settings', error)
     }
@@ -136,12 +169,48 @@ export class FirestoreAdapter implements IUserRepository {
   async updateSubscription(userId: string, subscription: Partial<User['subscription']>): Promise<void> {
     try {
       const docRef = doc(this.db, this.USERS_COLLECTION, userId)
-      await updateDoc(docRef, {
-        subscription: {
-          ...subscription,
-          updatedAt: Date.now(),
-        } as Partial<User['subscription']> & { updatedAt: number },
-      })
+
+      // Build update object with proper deep merge paths
+      const updateData: Record<string, unknown> = {}
+
+      // Update plan
+      if (subscription.plan !== undefined) {
+        updateData['subscription.plan'] = subscription.plan
+      }
+
+      // Update status
+      if (subscription.status !== undefined) {
+        updateData['subscription.status'] = subscription.status
+      }
+
+      // Update polarCustomerId
+      if (subscription.polarCustomerId !== undefined) {
+        updateData['subscription.polarCustomerId'] = subscription.polarCustomerId
+      }
+
+      // Update polarSubscriptionId
+      if (subscription.polarSubscriptionId !== undefined) {
+        updateData['subscription.polarSubscriptionId'] = subscription.polarSubscriptionId
+      }
+
+      // Update currentPeriodStart
+      if (subscription.currentPeriodStart !== undefined) {
+        updateData['subscription.currentPeriodStart'] = subscription.currentPeriodStart
+      }
+
+      // Update currentPeriodEnd
+      if (subscription.currentPeriodEnd !== undefined) {
+        updateData['subscription.currentPeriodEnd'] = subscription.currentPeriodEnd
+      }
+
+      // Update cancelAtPeriodEnd
+      if (subscription.cancelAtPeriodEnd !== undefined) {
+        updateData['subscription.cancelAtPeriodEnd'] = subscription.cancelAtPeriodEnd
+      }
+
+      updateData['subscription.updatedAt'] = Date.now()
+
+      await updateDoc(docRef, updateData)
     } catch (error) {
       throw createRepositoryError(RepositoryErrorCode.DOCUMENT_NOT_FOUND, 'Failed to update subscription', error)
     }
@@ -162,7 +231,7 @@ export class FirestoreAdapter implements IUserRepository {
     try {
       const q = query(collection(this.db, this.USERS_COLLECTION), ...constraints)
       const snap = await getDocs(q)
-      return snap.docs.map((doc) => doc.data() as User)
+      return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as User))
     } catch (error) {
       throw createRepositoryError(RepositoryErrorCode.QUERY_FAILED, 'Failed to query users', error)
     }
@@ -179,7 +248,7 @@ export class FirestoreAdapter implements IUserRepository {
       docRef,
       (snap) => {
         if (snap.exists()) {
-          callback(snap.data() as User)
+          callback({ id: snap.id, ...snap.data() } as User)
         } else {
           callback(null)
         }

@@ -63,6 +63,7 @@ interface Subscription {
  */
 export class RealTimeSubscriptionManager {
   private subscriptions: Map<string, Subscription> = new Map();
+  private cleanupIntervalId: ReturnType<typeof setInterval> | null = null;
   private get db(): Firestore {
     const db = getFirebaseDB();
     if (!db) {
@@ -267,11 +268,36 @@ export class RealTimeSubscriptionManager {
 
   /**
    * Auto-cleanup interval (default: 5 minutes)
+   * @returns Cleanup function to stop the interval
    */
-  startAutoCleanup(intervalMs: number = 5 * 60 * 1000): void {
-    setInterval(() => {
+  startAutoCleanup(intervalMs: number = 5 * 60 * 1000): () => void {
+    // Clear existing interval if any
+    this.stopAutoCleanup();
+
+    this.cleanupIntervalId = setInterval(() => {
       this.cleanupInactiveSubscriptions(intervalMs);
     }, intervalMs);
+
+    // Return cleanup function
+    return () => this.stopAutoCleanup();
+  }
+
+  /**
+   * Stop auto-cleanup interval
+   */
+  stopAutoCleanup(): void {
+    if (this.cleanupIntervalId !== null) {
+      clearInterval(this.cleanupIntervalId);
+      this.cleanupIntervalId = null;
+    }
+  }
+
+  /**
+   * Cleanup all resources (subscriptions and intervals)
+   */
+  dispose(): void {
+    this.stopAutoCleanup();
+    this.unsubscribeAll();
   }
 }
 

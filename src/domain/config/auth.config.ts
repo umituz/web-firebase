@@ -112,6 +112,37 @@ export const DEFAULT_AUTH_CONFIG: AuthConfig = {
 }
 
 /**
+ * Deep merge utility for nested objects
+ */
+function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
+  const result = { ...target }
+
+  for (const key in source) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      const sourceValue = source[key]
+      const targetValue = result[key]
+
+      if (
+        sourceValue &&
+        typeof sourceValue === 'object' &&
+        !Array.isArray(sourceValue) &&
+        targetValue &&
+        typeof targetValue === 'object' &&
+        !Array.isArray(targetValue)
+      ) {
+        // Recursively merge nested objects
+        result[key] = deepMerge(targetValue, sourceValue)
+      } else if (sourceValue !== undefined) {
+        // Override with source value (only if not undefined)
+        result[key] = sourceValue
+      }
+    }
+  }
+
+  return result
+}
+
+/**
  * Auth Configuration Manager
  * Singleton class to manage auth configuration
  */
@@ -120,22 +151,8 @@ export class AuthConfigManager {
   private config: AuthConfig
 
   private constructor(config: Partial<AuthConfig> = {}) {
-    this.config = {
-      ...DEFAULT_AUTH_CONFIG,
-      ...config,
-      defaultUserSettings: {
-        ...DEFAULT_AUTH_CONFIG.defaultUserSettings,
-        ...config.defaultUserSettings,
-        notifications: {
-          ...DEFAULT_AUTH_CONFIG.defaultUserSettings?.notifications,
-          ...config.defaultUserSettings?.notifications,
-        },
-        privacy: {
-          ...DEFAULT_AUTH_CONFIG.defaultUserSettings?.privacy,
-          ...config.defaultUserSettings?.privacy,
-        },
-      },
-    }
+    // Use deep merge for nested objects
+    this.config = deepMerge(DEFAULT_AUTH_CONFIG, config)
   }
 
   static getInstance(config?: Partial<AuthConfig>): AuthConfigManager {
@@ -150,22 +167,8 @@ export class AuthConfigManager {
   }
 
   updateConfig(updates: Partial<AuthConfig>): void {
-    this.config = {
-      ...this.config,
-      ...updates,
-      defaultUserSettings: {
-        ...this.config.defaultUserSettings,
-        ...updates.defaultUserSettings,
-        notifications: {
-          ...this.config.defaultUserSettings?.notifications,
-          ...updates.defaultUserSettings?.notifications,
-        },
-        privacy: {
-          ...this.config.defaultUserSettings?.privacy,
-          ...updates.defaultUserSettings?.privacy,
-        },
-      },
-    }
+    // Use deep merge for proper nested object merging
+    this.config = deepMerge(this.config, updates)
   }
 
   isGoogleEnabled(): boolean {

@@ -11,6 +11,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./auth": "./src/domains/auth/index.ts",
+    "./anonymous": "./src/domains/anonymous/index.ts",
     "./firestore": "./src/domains/firestore/index.ts",
     "./firestore/entities": "./src/domains/firestore/entities/index.ts",
     "./firestore/errors": "./src/domains/firestore/errors/index.ts",

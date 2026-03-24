@@ -10,6 +10,9 @@ import {
   query,
   writeBatch,
   onSnapshot,
+  where,
+  limit,
+  startAfter,
   type QueryConstraint,
   type DocumentData,
   type Firestore,
@@ -19,6 +22,7 @@ import {
 } from 'firebase/firestore';
 import { getFirebaseDB } from '../firebase/client';
 import type { IBaseRepository } from '../../domain/interfaces/repository.interface';
+import { createLRUCache, type LRUCache } from '../../utils/cache.util';
 
 /**
  * Firestore Repository Implementation
@@ -35,7 +39,28 @@ import type { IBaseRepository } from '../../domain/interfaces/repository.interfa
  * }
  */
 export class FirestoreRepository<T extends DocumentData> implements IBaseRepository<T> {
-  constructor(protected collectionName: string) {}
+  protected cache: LRUCache<string, T>;
+  protected queryCache: LRUCache<string, T[]>;
+  protected cachingEnabled: boolean;
+
+  constructor(
+    protected collectionName: string,
+    options?: {
+      enableCache?: boolean;
+      cacheMaxSize?: number;
+      cacheTTL?: number;
+    }
+  ) {
+    this.cachingEnabled = options?.enableCache ?? true;
+    this.cache = createLRUCache<string, T>({
+      maxSize: options?.cacheMaxSize ?? 100,
+      ttl: options?.cacheTTL ?? 5 * 60 * 1000,
+    });
+    this.queryCache = createLRUCache<string, T[]>({
+      maxSize: options?.cacheMaxSize ?? 50,
+      ttl: options?.cacheTTL ?? 2 * 60 * 1000,
+    });
+  }
 
   /**
    * Get Firestore DB instance
@@ -74,11 +99,29 @@ export class FirestoreRepository<T extends DocumentData> implements IBaseReposit
    * Get document by ID
    * @param id - Document ID
    * @param parentPath - Parent collection path for nested collections
+   * @param useCache - Use cache if available (default: true)
    * @returns Document data or null
    */
-  async getById(id: string, parentPath?: string): Promise<T | null> {
+  async getById(id: string, parentPath?: string, useCache = true): Promise<T | null> {
+    const cacheKey = this.getCacheKey(id, parentPath);
+
+    // Try cache first
+    if (this.cachingEnabled && useCache) {
+      const cached = this.cache.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
     const snap = await getDoc(this.getDocRef(id, parentPath));
-    return snap.exists() ? ({ id: snap.id, ...snap.data() } as unknown as T) : null;
+    const result = snap.exists() ? ({ id: snap.id, ...snap.data() } as unknown as T) : null;
+
+    // Cache the result
+    if (this.cachingEnabled && useCache && result) {
+      this.cache.set(cacheKey, result);
+    }
+
+    return result;
   }
 
   /**
@@ -86,16 +129,34 @@ export class FirestoreRepository<T extends DocumentData> implements IBaseReposit
    * @param constraints - Query constraints (where, orderBy, limit, etc.)
    * @param parentPath - Parent collection path for nested collections
    * @param returnSingle - Return single document if true
+   * @param useCache - Use cache if available (default: true)
    * @returns Array of documents or single document
    */
   async getAll(
     constraints: QueryConstraint[] = [],
     parentPath?: string,
-    returnSingle = false
+    returnSingle = false,
+    useCache = true
   ): Promise<T[]> {
+    const cacheKey = this.getQueryCacheKey(constraints, parentPath);
+
+    // Try cache first
+    if (this.cachingEnabled && useCache && constraints.length > 0) {
+      const cached = this.queryCache.get(cacheKey);
+      if (cached) {
+        return returnSingle ? cached.slice(0, 1) : cached;
+      }
+    }
+
     const q = query(this.getCollection(parentPath), ...constraints);
     const snap = await getDocs(q);
     const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as unknown as T));
+
+    // Cache the result (only if there are constraints)
+    if (this.cachingEnabled && useCache && constraints.length > 0) {
+      this.queryCache.set(cacheKey, docs);
+    }
+
     return returnSingle ? docs.slice(0, 1) : docs;
   }
 
@@ -111,6 +172,10 @@ export class FirestoreRepository<T extends DocumentData> implements IBaseReposit
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     } as DocumentData);
+
+    // Invalidate cache
+    this.invalidateCache(id, parentPath);
+    this.invalidateQueryCache(parentPath);
   }
 
   /**
@@ -139,6 +204,10 @@ export class FirestoreRepository<T extends DocumentData> implements IBaseReposit
       ...(data as DocumentData),
       updatedAt: new Date().toISOString(),
     });
+
+    // Invalidate cache
+    this.invalidateCache(id, parentPath);
+    this.invalidateQueryCache(parentPath);
   }
 
   /**
@@ -148,6 +217,10 @@ export class FirestoreRepository<T extends DocumentData> implements IBaseReposit
    */
   async delete(id: string, parentPath?: string): Promise<void> {
     await deleteDoc(this.getDocRef(id, parentPath));
+
+    // Invalidate cache
+    this.invalidateCache(id, parentPath);
+    this.invalidateQueryCache(parentPath);
   }
 
   /**
@@ -186,6 +259,14 @@ export class FirestoreRepository<T extends DocumentData> implements IBaseReposit
     });
 
     await batch.commit();
+
+    // Invalidate all affected caches
+    operations.forEach(({ type, id }) => {
+      if (type === 'create' || type === 'update' || type === 'delete') {
+        this.invalidateCache(id, parentPath);
+      }
+    });
+    this.invalidateQueryCache(parentPath);
   }
 
   /**
@@ -263,6 +344,10 @@ export class FirestoreRepository<T extends DocumentData> implements IBaseReposit
     } else {
       await this.create(id, data, parentPath);
     }
+
+    // Invalidate cache
+    this.invalidateCache(id, parentPath);
+    this.invalidateQueryCache(parentPath);
   }
 
   /**
@@ -307,12 +392,10 @@ export class FirestoreRepository<T extends DocumentData> implements IBaseReposit
     startAfter?: T,
     parentPath?: string
   ): Promise<{ documents: T[]; hasNextPage: boolean }> {
-    const { limit, startAfter: startAfterFn } = await import('firebase/firestore');
-
     const queryConstraints = [...constraints];
 
     if (startAfter) {
-      queryConstraints.push(startAfterFn(startAfter.id));
+      queryConstraints.push(startAfter(startAfter.id));
     }
 
     queryConstraints.push(limit(pageSize + 1));
@@ -348,8 +431,8 @@ export class FirestoreRepository<T extends DocumentData> implements IBaseReposit
    */
   async getByIds(ids: string[], parentPath?: string): Promise<T[]> {
     // Firestore limits 'in' queries to 10 items
-    const chunks = [];
     const chunkSize = 10;
+    const chunks: string[][] = [];
 
     for (let i = 0; i < ids.length; i += chunkSize) {
       chunks.push(ids.slice(i, i + chunkSize));
@@ -357,7 +440,6 @@ export class FirestoreRepository<T extends DocumentData> implements IBaseReposit
 
     const results: T[] = [];
     for (const chunk of chunks) {
-      const { where } = await import('firebase/firestore');
       const documents = await this.getAll([where('__name__', 'in', chunk)], parentPath);
       results.push(...documents);
     }
@@ -425,5 +507,92 @@ export class FirestoreRepository<T extends DocumentData> implements IBaseReposit
     );
 
     return unsubscribe;
+  }
+
+  /**
+   * Clear all caches
+   */
+  clearCache(): void {
+    this.cache.clear();
+    this.queryCache.clear();
+  }
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStats(): {
+    documentCache: { size: number; maxSize: number };
+    queryCache: { size: number; maxSize: number };
+  } {
+    return {
+      documentCache: {
+        size: this.cache.size(),
+        maxSize: 100,
+      },
+      queryCache: {
+        size: this.queryCache.size(),
+        maxSize: 50,
+      },
+    };
+  }
+
+  /**
+   * Enable or disable caching
+   */
+  setCaching(enabled: boolean): void {
+    this.cachingEnabled = enabled;
+    if (!enabled) {
+      this.clearCache();
+    }
+  }
+
+  /**
+   * Generate cache key for document
+   */
+  private getCacheKey(id: string, parentPath?: string): string {
+    return parentPath ? `${parentPath}/${this.collectionName}/${id}` : `${this.collectionName}/${id}`;
+  }
+
+  /**
+   * Generate cache key for query
+   * Note: Constraints order matters for cache key generation
+   */
+  private getQueryCacheKey(constraints: QueryConstraint[], parentPath?: string): string {
+    // Sort constraints by their string representation to ensure consistent keys
+    const sortedConstraints = [...constraints].sort((a, b) => {
+      const aStr = JSON.stringify(a);
+      const bStr = JSON.stringify(b);
+      return aStr.localeCompare(bStr);
+    });
+
+    const constraintStr = sortedConstraints.map(c => JSON.stringify(c)).join('&');
+    const fullPath = parentPath ? `${parentPath}/${this.collectionName}` : this.collectionName;
+    return `${fullPath}?${constraintStr}`;
+  }
+
+  /**
+   * Invalidate document cache
+   */
+  private invalidateCache(id: string, parentPath?: string): void {
+    const cacheKey = this.getCacheKey(id, parentPath);
+    this.cache.remove(cacheKey);
+  }
+
+  /**
+   * Invalidate query cache
+   */
+  private invalidateQueryCache(parentPath?: string): void {
+    // Use exact collection path matching to avoid false positives
+    const fullPath = parentPath ? `${parentPath}/${this.collectionName}` : this.collectionName;
+    const keys = this.queryCache.keys();
+
+    for (const key of keys) {
+      // Check if key starts with collection path followed by ? or /
+      // This avoids matching similar collection names like "users" vs "users-archive"
+      const matchPattern = new RegExp(`^${fullPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[/?]`);
+      if (matchPattern.test(key)) {
+        this.queryCache.remove(key);
+      }
+    }
   }
 }

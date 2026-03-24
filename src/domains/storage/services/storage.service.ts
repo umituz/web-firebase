@@ -130,14 +130,24 @@ class StorageService implements IStorageService {
       const userRef = ref(this.storage, `users/${userId}`)
       const result = await listAll(userRef)
 
-      // Delete all files in all prefixes
+      // Collect all files to delete (both in prefixes and root)
+      const allFiles: ReturnType<typeof ref>[] = []
+
+      // Add files from all prefixes
       for (const prefix of result.prefixes) {
         const prefixResult = await listAll(prefix)
-        await Promise.all(prefixResult.items.map((item) => deleteObject(item)))
+        allFiles.push(...prefixResult.items)
       }
 
-      // Delete all files in root
-      await Promise.all(result.items.map((item) => deleteObject(item)))
+      // Add files from root
+      allFiles.push(...result.items)
+
+      // Batch delete all files (max 10 concurrent to avoid overwhelming the API)
+      const concurrencyLimit = 10
+      for (let i = 0; i < allFiles.length; i += concurrencyLimit) {
+        const batch = allFiles.slice(i, i + concurrencyLimit)
+        await Promise.all(batch.map((item) => deleteObject(item)))
+      }
     } catch {
       throw new Error('Failed to delete user files')
     }

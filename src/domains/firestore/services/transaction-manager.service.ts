@@ -49,6 +49,11 @@ export interface TransactionOptions {
   timeout?: number;
 
   /**
+   * Maximum delay between retries in milliseconds
+   */
+  maxDelay?: number;
+
+  /**
    * Enable optimistic locking with version checks
    */
   enableOptimisticLocking?: boolean;
@@ -62,6 +67,29 @@ export interface TransactionResult {
   operations: TransactionOperation[];
   error?: Error;
 }
+
+/**
+ * Transaction error codes from Firebase
+ */
+const FIRESTORE_ERROR_CODES = {
+  ABORTED: 'aborted',
+  ALREADY_EXISTS: 'already-exists',
+  CANCELLED: 'cancelled',
+  DATA_LOSS: 'data-loss',
+  DEADLINE_EXCEEDED: 'deadline-exceeded',
+  FAILED_PRECONDITION: 'failed-precondition',
+  INTERNAL: 'internal',
+  INVALID_ARGUMENT: 'invalid-argument',
+  NOT_FOUND: 'not-found',
+  OK: 'ok',
+  OUT_OF_RANGE: 'out-of-range',
+  PERMISSION_DENIED: 'permission-denied',
+  RESOURCE_EXHAUSTED: 'resource-exhausted',
+  UNAUTHENTICATED: 'unauthenticated',
+  UNAVAILABLE: 'unavailable',
+  UNIMPLEMENTED: 'unimplemented',
+  UNKNOWN: 'unknown',
+} as const;
 
 /**
  * Transaction Manager Class
@@ -82,7 +110,7 @@ export class TransactionManager {
     operations: TransactionOperation[],
     options: TransactionOptions = {}
   ): Promise<TransactionResult> {
-    const { maxRetries = 5, enableOptimisticLocking = false } = options;
+    const { maxRetries = 5, enableOptimisticLocking = false, maxDelay = 5000 } = options;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
@@ -107,19 +135,21 @@ export class TransactionManager {
           };
         }
 
-        // Check if error is retryable (conflict)
-        const isConflict =
-          error instanceof Error && error.message.includes('conflict');
+        // Check if error is retryable using Firebase error codes
+        const isRetryable = this.isRetryableError(error);
 
-        if (!isConflict) {
+        if (!isRetryable) {
           throw new TransactionFailedError(
             operations.map((op) => `${op.type}:${op.documentId}`).join(', '),
             error
           );
         }
 
-        // Wait before retry with exponential backoff
-        await this.delay(Math.pow(2, attempt) * 100);
+        // Calculate delay with exponential backoff and max limit
+        const delayMs = Math.min(Math.pow(2, attempt) * 100, maxDelay);
+
+        // Wait before retry
+        await this.delay(delayMs);
       }
     }
 
@@ -128,6 +158,34 @@ export class TransactionManager {
       operations,
       error: new TransactionFailedError('Transaction failed after retries'),
     };
+  }
+
+  /**
+   * Check if error is retryable
+   */
+  private isRetryableError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    // Check for Firebase Firestore error codes
+    const errorCode = (error as { code?: string }).code;
+    if (errorCode) {
+      return [
+        FIRESTORE_ERROR_CODES.ABORTED,
+        FIRESTORE_ERROR_CODES.UNAVAILABLE,
+        FIRESTORE_ERROR_CODES.DEADLINE_EXCEEDED,
+        FIRESTORE_ERROR_CODES.RESOURCE_EXHAUSTED,
+        FIRESTORE_ERROR_CODES.INTERNAL,
+      ].includes(errorCode as any);
+    }
+
+    // Fallback to message checking for backward compatibility
+    const message = error.message.toLowerCase();
+    return message.includes('aborted') ||
+           message.includes('conflict') ||
+           message.includes('unavailable') ||
+           message.includes('deadline');
   }
 
   /**
@@ -203,7 +261,7 @@ export class TransactionManager {
     fn: (transaction: Transaction) => Promise<T>,
     options: TransactionOptions = {}
   ): Promise<T> {
-    const { maxRetries = 5 } = options;
+    const { maxRetries = 5, maxDelay = 5000 } = options;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
@@ -216,18 +274,21 @@ export class TransactionManager {
           );
         }
 
-        const isConflict =
-          error instanceof Error && error.message.includes('conflict');
+        // Check if error is retryable
+        const isRetryable = this.isRetryableError(error);
 
-        if (!isConflict) {
+        if (!isRetryable) {
           throw new TransactionFailedError(
             'withTransaction',
             error
           );
         }
 
-        // Wait before retry with exponential backoff
-        await this.delay(Math.pow(2, attempt) * 100);
+        // Calculate delay with exponential backoff and max limit
+        const delayMs = Math.min(Math.pow(2, attempt) * 100, maxDelay);
+
+        // Wait before retry
+        await this.delay(delayMs);
       }
     }
 

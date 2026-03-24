@@ -205,39 +205,53 @@ export class BatchOperationManager {
     documents: Array<{ id?: string; data: Record<string, unknown> }>,
     options: BatchOptions = {}
   ): Promise<string[]> {
-    const {
-      collection: docCollection,
-      addDoc,
-    } = await import('firebase/firestore');
+    const { collection: docCollection, addDoc } = await import('firebase/firestore');
 
-    const ids: string[] = [];
-    const operations: BatchOperation[] = [];
+    // Separate documents with IDs and without IDs
+    const withIds: Array<{ index: number; id: string; data: Record<string, unknown> }> = [];
+    const withoutIds: Array<{ index: number; data: Record<string, unknown> }> = [];
 
-    for (const doc of documents) {
+    documents.forEach((doc, index) => {
       if (doc.id) {
-        // Use provided ID
-        operations.push({
-          type: 'create',
-          collection,
-          documentId: doc.id,
-          data: doc.data,
-        });
-        ids.push(doc.id);
+        withIds.push({ index, id: doc.id, data: doc.data });
       } else {
-        // Generate auto ID
-        const collectionRef = docCollection(this.db, collection);
+        withoutIds.push({ index, data: doc.data });
+      }
+    });
+
+    const ids: string[] = new Array(documents.length);
+
+    // Execute batch for documents with provided IDs
+    if (withIds.length > 0) {
+      const operations: BatchOperation[] = withIds.map(({ id, data }) => ({
+        type: 'create' as const,
+        collection,
+        documentId: id,
+        data,
+      }));
+      await this.executeBatch(operations, options);
+
+      withIds.forEach(({ index, id }) => {
+        ids[index] = id;
+      });
+    }
+
+    // Generate auto IDs for documents without IDs (in parallel)
+    if (withoutIds.length > 0) {
+      const collectionRef = docCollection(this.db, collection);
+      const autoIdPromises = withoutIds.map(async ({ index, data }) => {
         const docRef = await addDoc(collectionRef, {
-          ...doc.data,
+          ...data,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
-        ids.push(docRef.id);
-      }
-    }
+        return { index, id: docRef.id };
+      });
 
-    // Execute batch for documents with provided IDs
-    if (operations.length > 0) {
-      await this.executeBatch(operations, options);
+      const results = await Promise.all(autoIdPromises);
+      results.forEach(({ index, id }) => {
+        ids[index] = id;
+      });
     }
 
     return ids;

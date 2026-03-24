@@ -133,18 +133,30 @@ export class StorageAdapter implements IFileRepository {
   async deleteUserFiles(userId: string): Promise<void> {
     try {
       const userRef = ref(this.storage, `users/${userId}`)
-      const result = await listAll(userRef)
 
-      // Delete all files in all prefixes
-      for (const prefix of result.prefixes) {
-        const prefixResult = await listAll(prefix)
-        await Promise.all(prefixResult.items.map((item) => deleteObject(item)))
-      }
-
-      // Delete all files in root
-      await Promise.all(result.items.map((item) => deleteObject(item)))
+      // Recursively delete all files and folders
+      await this.deleteDirectoryRecursively(userRef)
     } catch (error) {
       throw createRepositoryError(RepositoryErrorCode.STORAGE_ERROR, 'Failed to delete user files', error)
+    }
+  }
+
+  /**
+   * Recursively delete all files in a directory
+   */
+  private async deleteDirectoryRecursively(directoryRef: any): Promise<void> {
+    const result = await listAll(directoryRef)
+
+    // Delete all files in current directory (with concurrency limit)
+    const concurrencyLimit = 10
+    for (let i = 0; i < result.items.length; i += concurrencyLimit) {
+      const batch = result.items.slice(i, i + concurrencyLimit)
+      await Promise.all(batch.map((item) => deleteObject(item)))
+    }
+
+    // Recursively delete all subdirectories
+    for (const prefix of result.prefixes) {
+      await this.deleteDirectoryRecursively(prefix)
     }
   }
 

@@ -13,6 +13,7 @@ import {
   startAt,
   endAt,
   endBefore,
+  query,
   type QueryConstraint,
   type Query,
   type CollectionReference,
@@ -328,9 +329,6 @@ export class QueryBuilder {
     return builder;
   }
 }
-
-// Need to import query function
-import { query } from 'firebase/firestore';
 
 /**
  * Create query builder
