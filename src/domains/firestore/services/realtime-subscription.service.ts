@@ -19,7 +19,7 @@ import {
 import { getFirebaseDB } from '../../../infrastructure/firebase/client';
 import {
   FirestoreNotInitializedError,
-} from '../errors';
+} from '../../../domain/errors/repository.errors';
 
 /**
  * Subscription callback types

@@ -14,6 +14,36 @@ export class RepositoryError extends Error {
   }
 }
 
+export class BatchFailedError extends RepositoryError {
+  constructor(operationCount: number, originalError?: unknown) {
+    super(`Batch operation failed for ${operationCount} operations`, RepositoryErrorCode.TRANSACTION_FAILED, originalError)
+  }
+}
+
+export class BatchTooLargeError extends RepositoryError {
+  constructor(operationCount: number, maxSize: number) {
+    super(`Batch is too large: ${operationCount} operations exceeds maximum of ${maxSize}`, RepositoryErrorCode.TRANSACTION_FAILED)
+  }
+}
+
+export class FirestoreNotInitializedError extends RepositoryError {
+  constructor(originalError?: unknown) {
+    super('Firestore is not initialized. Call initializeFirebase() first.', RepositoryErrorCode.UNKNOWN, originalError)
+  }
+}
+
+export class TransactionFailedError extends RepositoryError {
+  constructor(operation: string, originalError?: unknown) {
+    super(`Transaction failed for operation: ${operation}`, RepositoryErrorCode.TRANSACTION_FAILED, originalError)
+  }
+}
+
+export class TransactionConflictError extends RepositoryError {
+  constructor(documentId: string, currentVersion: number, providedVersion: number) {
+    super(`Version conflict for document ${documentId}: current=${currentVersion}, provided=${providedVersion}`, RepositoryErrorCode.VERSION_MISMATCH)
+  }
+}
+
 export enum RepositoryErrorCode {
   // Document Errors
   DOCUMENT_NOT_FOUND = 'DOCUMENT_NOT_FOUND',

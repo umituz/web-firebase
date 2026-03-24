@@ -25,7 +25,6 @@ import {
   unlink as firebaseUnlink,
 } from 'firebase/auth'
 import { getFirebaseAuth } from './client'
-import type { IAuthRepository } from '../../domain/interfaces/auth.repository.interface'
 import type { User } from '../../domain/entities/user.entity'
 import { createAuthError, AuthErrorCode } from '../../domain/errors/auth.errors'
 import { getAuthConfig } from '../../domain/config/auth.config'
@@ -34,7 +33,7 @@ import { getAuthConfig } from '../../domain/config/auth.config'
  * Auth Adapter
  * Implements IAuthRepository with Google & Apple OAuth support
  */
-export class AuthAdapter implements IAuthRepository {
+export class AuthAdapter {
   private get auth() {
     const auth = getFirebaseAuth()
     if (!auth) {
@@ -43,12 +42,12 @@ export class AuthAdapter implements IAuthRepository {
     return auth
   }
 
-  private config = getAuthConfig()
-
   // ==================== Authentication Methods ====================
 
   async signIn(email: string, password: string): Promise<UserCredential> {
-    if (!this.config.isEmailPasswordEnabled()) {
+    const config = getAuthConfig()
+
+    if (!config.emailPasswordEnabled) {
       throw createAuthError(
         AuthErrorCode.UNKNOWN,
         'Email/password authentication is disabled'
@@ -63,7 +62,9 @@ export class AuthAdapter implements IAuthRepository {
   }
 
   async signUp(email: string, password: string, displayName: string): Promise<UserCredential> {
-    if (!this.config.isEmailPasswordEnabled()) {
+    const config = getAuthConfig()
+
+    if (!config.emailPasswordEnabled) {
       throw createAuthError(
         AuthErrorCode.UNKNOWN,
         'Email/password authentication is disabled'
@@ -77,7 +78,7 @@ export class AuthAdapter implements IAuthRepository {
       await updateAuthProfile(result.user, { displayName })
 
       // Send email verification if required
-      if (this.config.getConfig().requireEmailVerification) {
+      if (config.requireEmailVerification) {
         await sendEmailVerification(result.user)
       }
 
@@ -92,7 +93,9 @@ export class AuthAdapter implements IAuthRepository {
    * @param useRedirect - Whether to use redirect flow instead of popup (default: false)
    */
   async signInWithGoogle(useRedirect = false): Promise<UserCredential> {
-    if (!this.config.isGoogleEnabled()) {
+    const config = getAuthConfig()
+
+    if (!config.googleEnabled) {
       throw createAuthError(
         AuthErrorCode.UNKNOWN,
         'Google authentication is disabled'
@@ -101,11 +104,10 @@ export class AuthAdapter implements IAuthRepository {
 
     try {
       const provider = new GoogleAuthProvider()
-      const config = this.config.getConfig()
 
       // Add scopes
       if (config.googleScopes) {
-        config.googleScopes.forEach((scope) => provider.addScope(scope))
+        config.googleScopes.forEach((scope: string) => provider.addScope(scope))
       }
 
       // Add custom parameters
@@ -133,7 +135,9 @@ export class AuthAdapter implements IAuthRepository {
    * @param useRedirect - Whether to use redirect flow instead of popup (default: false)
    */
   async signInWithApple(useRedirect = false): Promise<UserCredential> {
-    if (!this.config.isAppleEnabled()) {
+    const config = getAuthConfig()
+
+    if (!config.appleEnabled) {
       throw createAuthError(
         AuthErrorCode.UNKNOWN,
         'Apple authentication is disabled'
@@ -254,7 +258,9 @@ export class AuthAdapter implements IAuthRepository {
    * Link Google to current user
    */
   async linkGoogle(): Promise<UserCredential> {
-    if (!this.config.isGoogleEnabled()) {
+    const config = getAuthConfig()
+
+    if (!config.googleEnabled) {
       throw createAuthError(AuthErrorCode.UNKNOWN, 'Google authentication is disabled')
     }
 
@@ -265,10 +271,9 @@ export class AuthAdapter implements IAuthRepository {
       }
 
       const provider = new GoogleAuthProvider()
-      const config = this.config.getConfig()
 
       if (config.googleScopes) {
-        config.googleScopes.forEach((scope) => provider.addScope(scope))
+        config.googleScopes.forEach((scope: string) => provider.addScope(scope))
       }
 
       if (config.googleCustomParameters) {
@@ -285,7 +290,9 @@ export class AuthAdapter implements IAuthRepository {
    * Link Apple to current user
    */
   async linkApple(): Promise<UserCredential> {
-    if (!this.config.isAppleEnabled()) {
+    const config = getAuthConfig()
+
+    if (!config.appleEnabled) {
       throw createAuthError(AuthErrorCode.UNKNOWN, 'Apple authentication is disabled')
     }
 

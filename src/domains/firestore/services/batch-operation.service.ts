@@ -15,7 +15,7 @@ import {
   BatchFailedError,
   BatchTooLargeError,
   FirestoreNotInitializedError,
-} from '../errors';
+} from '../../../domain/errors/repository.errors';
 
 /**
  * Firestore maximum operations per batch

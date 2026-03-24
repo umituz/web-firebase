@@ -100,7 +100,7 @@ export class RequestDebouncer {
    * Cancel all pending debounced requests
    */
   cancelAll(): void {
-    for (const [key, timeoutId] of this.debouncers) {
+    for (const [, timeoutId] of this.debouncers) {
       clearTimeout(timeoutId);
     }
     this.debouncers.clear();
@@ -170,7 +170,7 @@ export class RequestThrottler {
    * Cancel all pending throttled requests
    */
   cancelAll(): void {
-    for (const [key, timeoutId] of this.pendingTimeouts) {
+    for (const [, timeoutId] of this.pendingTimeouts) {
       clearTimeout(timeoutId);
     }
     this.pendingTimeouts.clear();

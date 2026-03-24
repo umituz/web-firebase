@@ -28,24 +28,19 @@ export {
 // AUTH SERVICE
 // ============================================================
 
-export { AuthService, type IAuthRepository } from './infrastructure/firebase/auth.adapter'
-export const authService = new AuthService()
+export { AuthAdapter as AuthService } from './infrastructure/firebase/auth.adapter'
 
 // ============================================================
 // FIRESTORE REPOSITORY
 // ============================================================
 
-export {
-  FirestoreRepository,
-  type IBaseRepository,
-} from './infrastructure/services/firestore.repository'
+export { FirestoreRepository } from './infrastructure/services/firestore.repository'
 
 // ============================================================
 // STORAGE SERVICE
 // ============================================================
 
-export { StorageAdapter, type IFileRepository } from './infrastructure/firebase/storage.adapter'
-export const storageService = new StorageAdapter()
+export { StorageAdapter as StorageService } from './infrastructure/firebase/storage.adapter'
 
 // ============================================================
 // UTILITIES

@@ -14,7 +14,6 @@ import {
   getMetadata,
 } from 'firebase/storage'
 import { getFirebaseStorage } from './client'
-import type { IFileRepository } from '../../domain/interfaces/file.repository.interface'
 import type {
   FileMetadata,
   UploadProgress,
@@ -24,7 +23,7 @@ import type {
 } from '../../domain/entities/file.entity'
 import { createRepositoryError, RepositoryErrorCode } from '../../domain/errors/repository.errors'
 
-export class StorageAdapter implements IFileRepository {
+export class StorageAdapter {
   private get storage() {
     const storage = getFirebaseStorage()
     if (!storage) {

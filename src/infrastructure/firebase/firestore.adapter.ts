@@ -17,11 +17,10 @@ import {
   getDocs,
 } from 'firebase/firestore'
 import { getFirebaseDB } from './client'
-import type { IUserRepository } from '../../domain/interfaces/user.repository.interface'
 import type { User } from '../../domain/entities/user.entity'
 import { createRepositoryError, RepositoryErrorCode } from '../../domain/errors/repository.errors'
 
-export class FirestoreAdapter implements IUserRepository {
+export class FirestoreAdapter {
   private get db() {
     const db = getFirebaseDB()
     if (!db) {
@@ -41,7 +40,7 @@ export class FirestoreAdapter implements IUserRepository {
         return null
       }
 
-      return { id: snap.id, ...snap.data() } as User
+      return { id: snap.id, ...snap.data() } as unknown as User
     } catch (error) {
       throw createRepositoryError(RepositoryErrorCode.DOCUMENT_NOT_FOUND, 'User not found', error)
     }
@@ -57,7 +56,7 @@ export class FirestoreAdapter implements IUserRepository {
       }
 
       const doc = snap.docs[0]
-      return { id: doc.id, ...doc.data() } as User
+      return { id: doc.id, ...doc.data() } as unknown as User
     } catch (error) {
       throw createRepositoryError(RepositoryErrorCode.QUERY_FAILED, 'Failed to query user', error)
     }
@@ -231,7 +230,7 @@ export class FirestoreAdapter implements IUserRepository {
     try {
       const q = query(collection(this.db, this.USERS_COLLECTION), ...constraints)
       const snap = await getDocs(q)
-      return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as User))
+      return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as unknown as User))
     } catch (error) {
       throw createRepositoryError(RepositoryErrorCode.QUERY_FAILED, 'Failed to query users', error)
     }
@@ -248,7 +247,7 @@ export class FirestoreAdapter implements IUserRepository {
       docRef,
       (snap) => {
         if (snap.exists()) {
-          callback({ id: snap.id, ...snap.data() } as User)
+          callback({ id: snap.id, ...snap.data() } as unknown as User)
         } else {
           callback(null)
         }

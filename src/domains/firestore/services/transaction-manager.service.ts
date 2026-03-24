@@ -16,7 +16,7 @@ import {
   TransactionFailedError,
   TransactionConflictError,
   FirestoreNotInitializedError,
-} from '../errors';
+} from '../../../domain/errors/repository.errors';
 
 /**
  * Transaction operation type

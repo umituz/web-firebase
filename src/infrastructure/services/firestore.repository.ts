@@ -21,8 +21,7 @@ import {
   type QuerySnapshot,
 } from 'firebase/firestore';
 import { getFirebaseDB } from '../firebase/client';
-import type { IBaseRepository } from '../../domain/interfaces/repository.interface';
-import { createLRUCache, type LRUCache } from '../../utils/cache.util';
+import { createLRUCache, type LRUCache } from '../utils/cache.util';
 
 /**
  * Firestore Repository Implementation
@@ -38,7 +37,7 @@ import { createLRUCache, type LRUCache } from '../../utils/cache.util';
  *   }
  * }
  */
-export class FirestoreRepository<T extends DocumentData> implements IBaseRepository<T> {
+export class FirestoreRepository<T extends DocumentData> {
   protected cache: LRUCache<string, T>;
   protected queryCache: LRUCache<string, T[]>;
   protected cachingEnabled: boolean;
@@ -382,20 +381,20 @@ export class FirestoreRepository<T extends DocumentData> implements IBaseReposit
    * Get paginated results
    * @param constraints - Query constraints
    * @param pageSize - Page size
-   * @param startAfter - Start after document
+   * @param startAfterDoc - Start after document
    * @param parentPath - Parent collection path for nested collections
    * @returns Paginated documents
    */
   async paginate(
     constraints: QueryConstraint[] = [],
     pageSize = 20,
-    startAfter?: T,
+    startAfterDoc?: T,
     parentPath?: string
   ): Promise<{ documents: T[]; hasNextPage: boolean }> {
     const queryConstraints = [...constraints];
 
-    if (startAfter) {
-      queryConstraints.push(startAfter(startAfter.id));
+    if (startAfterDoc) {
+      queryConstraints.push(startAfter(startAfterDoc.id));
     }
 
     queryConstraints.push(limit(pageSize + 1));
