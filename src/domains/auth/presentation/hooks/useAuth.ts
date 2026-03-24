@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react'
 import type { User } from 'firebase/auth'
-import { getFirebaseAuth } from '../firebase/client'
+import { getFirebaseAuth } from '../../../../infrastructure/firebase/client'
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)

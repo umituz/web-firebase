@@ -28,19 +28,21 @@ export {
 // AUTH SERVICE
 // ============================================================
 
-export { AuthAdapter as AuthService } from './infrastructure/firebase/auth.adapter'
+export { AuthAdapter as AuthService } from './domains/auth/infrastructure/auth.adapter'
+export { useAuth } from './domains/auth/presentation/hooks/useAuth'
+export { FirebaseProvider } from './infrastructure/components/FirebaseProvider'
 
 // ============================================================
 // FIRESTORE REPOSITORY
 // ============================================================
 
-export { FirestoreRepository } from './infrastructure/services/firestore.repository'
+export { FirestoreRepository } from './domains/firestore/infrastructure/firestore.repository'
 
 // ============================================================
 // STORAGE SERVICE
 // ============================================================
 
-export { StorageAdapter as StorageService } from './infrastructure/firebase/storage.adapter'
+export { StorageAdapter as StorageService } from './domains/storage/infrastructure/storage.adapter'
 
 // ============================================================
 // UTILITIES

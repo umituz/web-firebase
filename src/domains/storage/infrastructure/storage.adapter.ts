@@ -13,15 +13,15 @@ import {
   listAll,
   getMetadata,
 } from 'firebase/storage'
-import { getFirebaseStorage } from './client'
+import { getFirebaseStorage } from '../../../infrastructure/firebase/client'
 import type {
   FileMetadata,
   UploadProgress,
   UploadResult,
   UploadOptions,
   StorageStats,
-} from '../../domains/storage/entities/file.entity'
-import { createRepositoryError, RepositoryErrorCode } from '../../domains/firestore/errors/repository.errors'
+} from '../entities/file.entity'
+import { createRepositoryError, RepositoryErrorCode } from '../../firestore/errors/repository.errors'
 
 export class StorageAdapter {
   private get storage() {

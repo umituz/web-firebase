@@ -16,9 +16,9 @@ import {
   collection,
   getDocs,
 } from 'firebase/firestore'
-import { getFirebaseDB } from './client'
-import type { User } from '../../domains/auth/entities/user.entity'
-import { createRepositoryError, RepositoryErrorCode } from '../../domains/firestore/errors/repository.errors'
+import { getFirebaseDB } from '../../../infrastructure/firebase/client'
+import type { User } from '../../auth/entities/user.entity'
+import { createRepositoryError, RepositoryErrorCode } from '../errors/repository.errors'
 
 export class FirestoreAdapter {
   private get db() {

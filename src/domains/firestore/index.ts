@@ -16,4 +16,4 @@ export * from './types'
 export * from './services'
 
 // Infrastructure
-export { FirestoreRepository } from '../../infrastructure/services/firestore.repository'
+export { FirestoreRepository } from './infrastructure/firestore.repository'

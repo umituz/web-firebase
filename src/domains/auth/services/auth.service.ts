@@ -8,7 +8,7 @@ import type { UserCredential } from 'firebase/auth'
 import type { AuthUser } from '../entities'
 import type { IAuthService } from '../types'
 import { toAuthUser } from '../entities'
-import { authAdapter } from '../../../infrastructure/firebase/auth.adapter'
+import { authAdapter } from '../infrastructure/auth.adapter'
 
 /**
  * Auth Service

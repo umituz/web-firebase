@@ -25,10 +25,10 @@ import {
   unlink as firebaseUnlink,
   signInAnonymously,
 } from 'firebase/auth'
-import { getFirebaseAuth } from './client'
-import type { User } from '../../domains/auth/entities/user.entity'
-import { createAuthError, AuthErrorCode } from '../../domains/auth/errors/auth.errors'
-import { getAuthConfig } from '../../domains/auth/config/auth.config'
+import { getFirebaseAuth } from '../../../infrastructure/firebase/client'
+import type { User } from '../entities/user.entity'
+import { createAuthError, AuthErrorCode } from '../errors/auth.errors'
+import { getAuthConfig } from '../config/auth.config'
 
 /**
  * Auth Adapter

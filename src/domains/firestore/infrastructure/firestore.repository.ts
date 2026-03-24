@@ -20,8 +20,8 @@ import {
   type DocumentSnapshot,
   type QuerySnapshot,
 } from 'firebase/firestore';
-import { getFirebaseDB } from '../firebase/client';
-import { createLRUCache, type LRUCache } from '../utils/cache.util';
+import { getFirebaseDB } from '../../../infrastructure/firebase/client';
+import { createLRUCache, type LRUCache } from '../../../infrastructure/utils/cache.util';
 
 /**
  * Firestore Repository Implementation
