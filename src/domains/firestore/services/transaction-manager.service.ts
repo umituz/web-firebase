@@ -16,7 +16,7 @@ import {
   TransactionFailedError,
   TransactionConflictError,
   FirestoreNotInitializedError,
-} from '../errors';
+} from '../errors/repository.errors';
 
 /**
  * Transaction operation type
@@ -378,12 +378,15 @@ export class TransactionManager {
   }
 }
 
-// Export singleton instance
-export const transactionManager = new TransactionManager();
-
 /**
  * Create transaction manager instance
  */
 export function createTransactionManager(): TransactionManager {
   return new TransactionManager();
 }
+
+/**
+ * Singleton instance
+ */
+export const transactionManager = createTransactionManager();
+

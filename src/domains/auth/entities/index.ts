@@ -5,6 +5,8 @@
 
 import type { User as FirebaseUser } from 'firebase/auth'
 
+export * from './user.entity'
+
 /**
  * Auth User Entity
  * Wrapper around Firebase User with application-specific data

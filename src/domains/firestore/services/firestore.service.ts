@@ -39,7 +39,7 @@ class FirestoreService implements IFirestoreService {
         return null
       }
 
-      return { id: snap.id, ...snap.data() } as User
+      return { id: snap.id, ...snap.data() } as unknown as User
     } catch (error) {
       throw new Error('User not found')
     }
@@ -55,7 +55,7 @@ class FirestoreService implements IFirestoreService {
       }
 
       const doc = snap.docs[0]
-      return { id: doc.id, ...doc.data() } as User
+      return { id: doc.id, ...doc.data() } as unknown as User
     } catch (error) {
       throw new Error('Failed to query user')
     }
@@ -229,7 +229,7 @@ class FirestoreService implements IFirestoreService {
     try {
       const q = query(collection(this.db, this.USERS_COLLECTION), ...constraints)
       const snap = await getDocs(q)
-      return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as User))
+      return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as unknown as User))
     } catch (error) {
       throw new Error('Failed to query users')
     }
@@ -246,7 +246,7 @@ class FirestoreService implements IFirestoreService {
       docRef,
       (snap) => {
         if (snap.exists()) {
-          callback({ id: snap.id, ...snap.data() } as User)
+          callback({ id: snap.id, ...snap.data() } as unknown as User)
         } else {
           callback(null)
         }

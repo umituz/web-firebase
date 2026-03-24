@@ -68,16 +68,16 @@ export {
 // TYPES & INTERFACES
 // ============================================================
 
-export type { User, UserProfile, UserSettings, UserSubscription } from './domain/entities/user.entity'
-export type { FileMetadata, UploadResult, UploadOptions, UploadProgress } from './domain/entities/file.entity'
+export type { User, UserProfile, UserSettings, UserSubscription } from './domains/auth/entities/user.entity'
+export type { FileMetadata, UploadResult, UploadOptions, UploadProgress } from './domains/storage/entities/file.entity'
 
 // ============================================================
 // ERROR CLASSES
 // ============================================================
 
-export { AuthError, AuthErrorCode, createAuthError } from './domain/errors/auth.errors'
+export { AuthError, AuthErrorCode, createAuthError } from './domains/auth/errors/auth.errors'
 export {
   RepositoryError,
   RepositoryErrorCode,
   createRepositoryError,
-} from './domain/errors/repository.errors'
+} from './domains/firestore/errors/repository.errors'

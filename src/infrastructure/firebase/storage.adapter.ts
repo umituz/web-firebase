@@ -20,8 +20,8 @@ import type {
   UploadResult,
   UploadOptions,
   StorageStats,
-} from '../../domain/entities/file.entity'
-import { createRepositoryError, RepositoryErrorCode } from '../../domain/errors/repository.errors'
+} from '../../domains/storage/entities/file.entity'
+import { createRepositoryError, RepositoryErrorCode } from '../../domains/firestore/errors/repository.errors'
 
 export class StorageAdapter {
   private get storage() {

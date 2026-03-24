@@ -26,9 +26,9 @@ import {
   signInAnonymously,
 } from 'firebase/auth'
 import { getFirebaseAuth } from './client'
-import type { User } from '../../domain/entities/user.entity'
-import { createAuthError, AuthErrorCode } from '../../domain/errors/auth.errors'
-import { getAuthConfig } from '../../domain/config/auth.config'
+import type { User } from '../../domains/auth/entities/user.entity'
+import { createAuthError, AuthErrorCode } from '../../domains/auth/errors/auth.errors'
+import { getAuthConfig } from '../../domains/auth/config/auth.config'
 
 /**
  * Auth Adapter

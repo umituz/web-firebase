@@ -7,7 +7,7 @@ import type {
   UploadResult,
   UploadOptions,
 } from '../entities'
-import type { FileValidationOptions } from '../../../domain/entities/file.entity'
+import type { FileValidationOptions } from '../entities/file.entity'
 
 export interface IStorageService {
   /**

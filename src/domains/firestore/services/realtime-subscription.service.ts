@@ -19,7 +19,7 @@ import {
 import { getFirebaseDB } from '../../../infrastructure/firebase/client';
 import {
   FirestoreNotInitializedError,
-} from '../errors';
+} from '../errors/repository.errors';
 
 /**
  * Subscription callback types
@@ -301,12 +301,15 @@ export class RealTimeSubscriptionManager {
   }
 }
 
-// Export singleton instance
-export const realTimeSubscriptionManager = new RealTimeSubscriptionManager();
-
 /**
  * Create real-time subscription manager instance
  */
 export function createRealTimeSubscriptionManager(): RealTimeSubscriptionManager {
   return new RealTimeSubscriptionManager();
 }
+
+/**
+ * Singleton instance
+ */
+export const realTimeSubscriptionManager = createRealTimeSubscriptionManager();
+

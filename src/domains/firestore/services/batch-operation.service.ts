@@ -15,7 +15,7 @@ import {
   BatchFailedError,
   BatchTooLargeError,
   FirestoreNotInitializedError,
-} from '../errors';
+} from '../errors/repository.errors';
 
 /**
  * Firestore maximum operations per batch
@@ -352,12 +352,15 @@ export class BatchOperationManager {
   }
 }
 
-// Export singleton instance
-export const batchOperationManager = new BatchOperationManager();
-
 /**
  * Create batch operation manager instance
  */
 export function createBatchOperationManager(): BatchOperationManager {
   return new BatchOperationManager();
 }
+
+/**
+ * Singleton instance
+ */
+export const batchOperationManager = createBatchOperationManager();
+
