@@ -396,5 +396,3 @@ export class AuthAdapter implements IAuthRepository {
   }
 }
 
-// Export singleton instance
-export const authAdapter = new AuthAdapter()

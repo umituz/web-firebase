@@ -59,7 +59,7 @@ export type UploadState =
  * File Upload Result Entity
  * Result of a file upload operation
  */
-export interface FileUploadResult {
+export interface UploadResult {
   readonly id: string
   readonly name: string
   readonly fullPath: string
@@ -68,9 +68,6 @@ export interface FileUploadResult {
   readonly size: number
   readonly createdAt: number
 }
-
-// Export as UploadResult for backward compatibility
-export type UploadResult = FileUploadResult
 
 /**
  * Upload Options

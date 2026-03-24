@@ -9,22 +9,7 @@
     "access": "public"
   },
   "exports": {
-    ".": "./src/index.ts",
-    "./auth": "./src/domains/auth/index.ts",
-    "./anonymous": "./src/domains/anonymous/index.ts",
-    "./firestore": "./src/domains/firestore/index.ts",
-    "./firestore/entities": "./src/domains/firestore/entities/index.ts",
-    "./firestore/errors": "./src/domains/firestore/errors/index.ts",
-    "./firestore/services": "./src/domains/firestore/services/index.ts",
-    "./firestore/types": "./src/domains/firestore/types/index.ts",
-    "./storage": "./src/domains/storage/index.ts",
-    "./storage/entities": "./src/domains/storage/entities/index.ts",
-    "./storage/services": "./src/domains/storage/services/index.ts",
-    "./storage/types": "./src/domains/storage/types/index.ts",
-    "./domain": "./src/domain/index.ts",
-    "./config": "./src/domain/config/auth.config.ts",
-    "./repository": "./src/infrastructure/services/firestore.repository.ts",
-    "./package.json": "./package.json"
+    ".": "./src/index.ts"
   },
   "files": [
     "src"

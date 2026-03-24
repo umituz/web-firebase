@@ -378,9 +378,6 @@ export class TransactionManager {
   }
 }
 
-// Export singleton instance
-export const transactionManager = new TransactionManager();
-
 /**
  * Create transaction manager instance
  */

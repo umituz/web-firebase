@@ -271,55 +271,6 @@ export class StorageAdapter implements IFileRepository {
     return stats
   }
 
-  // Validation
-
-  validateFile(file: File, options?: { maxSizeBytes?: number; maxSizeMB?: number; allowedTypes?: string[] }): boolean {
-    const maxSizeBytes = options?.maxSizeBytes || (options?.maxSizeMB ? options.maxSizeMB * 1024 * 1024 : 10 * 1024 * 1024)
-
-    if (file.size > maxSizeBytes) {
-      return false
-    }
-
-    if (options?.allowedTypes && !options.allowedTypes.includes(file.type)) {
-      return false
-    }
-
-    return true
-  }
-
-  isImageFile(file: File): boolean {
-    return file.type.startsWith('image/')
-  }
-
-  isVideoFile(file: File): boolean {
-    return file.type.startsWith('video/')
-  }
-
-  isDocumentFile(file: File): boolean {
-    const docTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/plain',
-    ]
-    return docTypes.includes(file.type)
-  }
-
-  // Utility Methods
-
-  generateUniqueFilename(originalName: string): string {
-    const timestamp = Date.now()
-    const random = Math.random().toString(36).substring(2, 8)
-    const extension = this.getFileExtension(originalName)
-    return `${timestamp}_${random}.${extension}`
-  }
-
-  getFileExtension(filename: string): string {
-    return filename.slice(((filename.lastIndexOf('.') - 1) >>> 0) + 2)
-  }
-
   // Helper Methods
 
   private extractUserId(path: string): string {

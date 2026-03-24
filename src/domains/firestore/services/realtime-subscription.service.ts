@@ -301,9 +301,6 @@ export class RealTimeSubscriptionManager {
   }
 }
 
-// Export singleton instance
-export const realTimeSubscriptionManager = new RealTimeSubscriptionManager();
-
 /**
  * Create real-time subscription manager instance
  */

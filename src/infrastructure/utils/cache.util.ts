@@ -281,26 +281,3 @@ export function createLRUCache<K, V>(options?: CacheOptions): LRUCache<K, V> {
   return new LRUCache<K, V>(options);
 }
 
-/**
- * Global cache instances
- */
-export const globalCaches = {
-  documents: createLRUCache<string, unknown>({ maxSize: 200, ttl: 5 * 60 * 1000 }),
-  queries: createLRUCache<string, unknown[]>({ maxSize: 100, ttl: 2 * 60 * 1000 }),
-};
-
-/**
- * Clear all global caches
- */
-export function clearGlobalCaches(): void {
-  globalCaches.documents.clear();
-  globalCaches.queries.clear();
-}
-
-/**
- * Dispose all global caches
- */
-export function disposeGlobalCaches(): void {
-  globalCaches.documents.dispose();
-  globalCaches.queries.dispose();
-}
