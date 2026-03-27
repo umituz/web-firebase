@@ -1,6 +1,6 @@
 {
   "name": "@umituz/web-firebase",
-  "version": "3.6.23",
+  "version": "3.6.24",
   "description": "Comprehensive Firebase integration with domain-based architecture for web applications",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
