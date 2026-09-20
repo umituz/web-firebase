@@ -8,12 +8,14 @@
 import {
   writeBatch,
   doc,
+  collection,
+  addDoc,
+  getDoc,
   type Firestore,
 } from 'firebase/firestore';
 import { getFirebaseDB } from '../../../infrastructure/firebase/client';
 import {
   BatchFailedError,
-  BatchTooLargeError,
   FirestoreNotInitializedError,
 } from '../errors/repository.errors';
 
@@ -94,11 +96,9 @@ export class BatchOperationManager {
       continueOnError = false,
     } = options;
 
-    if (operations.length > maxOperations) {
-      throw new BatchTooLargeError(operations.length, maxOperations);
-    }
-
-    // Chunk operations into batches
+    // Chunk operations into batches of at most `maxOperations`.
+    // Larger inputs are split and committed sequentially instead of throwing,
+    // matching the documented "automatic chunking" behavior.
     const chunks = this.chunkOperations(operations, maxOperations);
 
     const result: BatchResult = {
@@ -201,12 +201,10 @@ export class BatchOperationManager {
    * Create documents with auto-generated IDs
    */
   async createWithAutoIds(
-    collection: string,
+    collectionName: string,
     documents: Array<{ id?: string; data: Record<string, unknown> }>,
     options: BatchOptions = {}
   ): Promise<string[]> {
-    const { collection: docCollection, addDoc } = await import('firebase/firestore');
-
     // Separate documents with IDs and without IDs
     const withIds: Array<{ index: number; id: string; data: Record<string, unknown> }> = [];
     const withoutIds: Array<{ index: number; data: Record<string, unknown> }> = [];
@@ -225,7 +223,7 @@ export class BatchOperationManager {
     if (withIds.length > 0) {
       const operations: BatchOperation[] = withIds.map(({ id, data }) => ({
         type: 'create' as const,
-        collection,
+        collection: collectionName,
         documentId: id,
         data,
       }));
@@ -238,7 +236,9 @@ export class BatchOperationManager {
 
     // Generate auto IDs for documents without IDs (in parallel)
     if (withoutIds.length > 0) {
-      const collectionRef = docCollection(this.db, collection);
+      // NOTE: must be a CollectionReference — passing a document reference
+      // (or `doc(db, name)`, which throws for single-segment paths) breaks addDoc.
+      const collectionRef = collection(this.db, collectionName);
       const autoIdPromises = withoutIds.map(async ({ index, data }) => {
         const docRef = await addDoc(collectionRef, {
           ...data,
@@ -304,8 +304,6 @@ export class BatchOperationManager {
     documentIds: string[],
     options: BatchOptions = {}
   ): Promise<void> {
-    const { getDoc } = await import('firebase/firestore');
-
     // Read all source documents
     const operations: BatchOperation[] = [];
 

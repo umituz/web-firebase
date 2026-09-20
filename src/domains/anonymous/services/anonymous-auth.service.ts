@@ -31,15 +31,29 @@ export class AnonymousAuthService {
   }
 
   /**
+   * Get localStorage when running in a browser; null on the server.
+   * All storage access goes through this guard so SSR never throws.
+   */
+  private getStorage(): Storage | null {
+    try {
+      return typeof localStorage !== 'undefined' ? localStorage : null
+    } catch {
+      // Accessing localStorage can throw (e.g. disabled cookies, sandboxed iframe)
+      return null
+    }
+  }
+
+  /**
    * Get or create device ID
    */
   private getDeviceId(): string {
     if (this.deviceId) return this.deviceId;
 
-    let storedDeviceId = localStorage.getItem(this.config.storageKeys.deviceId);
+    const storage = this.getStorage();
+    let storedDeviceId = storage?.getItem(this.config.storageKeys.deviceId) ?? null;
     if (!storedDeviceId) {
       storedDeviceId = this.generateDeviceId();
-      localStorage.setItem(this.config.storageKeys.deviceId, storedDeviceId);
+      storage?.setItem(this.config.storageKeys.deviceId, storedDeviceId);
     }
 
     this.deviceId = storedDeviceId;
@@ -57,14 +71,14 @@ export class AnonymousAuthService {
    * Check if anonymous user already exists in localStorage
    */
   hasAnonymousUser(): boolean {
-    return localStorage.getItem(this.config.storageKeys.anonymousUserCreated) === 'true';
+    return this.getStorage()?.getItem(this.config.storageKeys.anonymousUserCreated) === 'true';
   }
 
   /**
    * Get stored anonymous UID from localStorage
    */
   getStoredAnonymousUid(): string | null {
-    return localStorage.getItem(this.config.storageKeys.anonymousUid);
+    return this.getStorage()?.getItem(this.config.storageKeys.anonymousUid) ?? null;
   }
 
   /**
@@ -120,9 +134,10 @@ export class AnonymousAuthService {
         },
       });
 
-      // Store in localStorage
-      localStorage.setItem(this.config.storageKeys.anonymousUserCreated, 'true');
-      localStorage.setItem(this.config.storageKeys.anonymousUid, anonymousUid);
+      // Store in localStorage (no-op on the server)
+      const storage = this.getStorage();
+      storage?.setItem(this.config.storageKeys.anonymousUserCreated, 'true');
+      storage?.setItem(this.config.storageKeys.anonymousUid, anonymousUid);
 
       console.log('[AnonymousAuth] Created anonymous user:', anonymousUid);
 
@@ -149,8 +164,9 @@ export class AnonymousAuthService {
    * Call after successful migration to authenticated user
    */
   clearAnonymousData(): void {
-    localStorage.removeItem(this.config.storageKeys.anonymousUserCreated);
-    localStorage.removeItem(this.config.storageKeys.anonymousUid);
+    const storage = this.getStorage();
+    storage?.removeItem(this.config.storageKeys.anonymousUserCreated);
+    storage?.removeItem(this.config.storageKeys.anonymousUid);
     // Keep device ID for tracking continuity
     this.deviceId = null;
   }

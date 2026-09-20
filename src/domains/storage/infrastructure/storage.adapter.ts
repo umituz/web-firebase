@@ -12,6 +12,7 @@ import {
   deleteObject,
   listAll,
   getMetadata,
+  type StorageReference,
 } from 'firebase/storage'
 import { getFirebaseStorage } from '../../../infrastructure/firebase/client'
 import type {
@@ -44,6 +45,20 @@ export class StorageAdapter {
     const uploadTask = uploadBytesResumable(storageRef, file)
 
     return new Promise((resolve, reject) => {
+      // Support caller-initiated cancellation via AbortSignal
+      const signal = options?.signal
+      const onAbort = () => {
+        uploadTask.cancel()
+      }
+      if (signal) {
+        if (signal.aborted) {
+          uploadTask.cancel()
+          reject(createRepositoryError(RepositoryErrorCode.STORAGE_ERROR, 'Upload cancelled', new DOMException('Aborted', 'AbortError')))
+          return
+        }
+        signal.addEventListener('abort', onAbort, { once: true })
+      }
+
       uploadTask.on(
         'state_changed',
         (snapshot) => {
@@ -57,20 +72,34 @@ export class StorageAdapter {
             options.onProgress(progress)
           }
         },
-        (error) => reject(createRepositoryError(RepositoryErrorCode.STORAGE_ERROR, 'Upload failed', error)),
+        (error) => {
+          if (signal) signal.removeEventListener('abort', onAbort)
+          const cancelled = signal?.aborted === true
+          reject(createRepositoryError(
+            RepositoryErrorCode.STORAGE_ERROR,
+            cancelled ? 'Upload cancelled' : 'Upload failed',
+            error
+          ))
+        },
         async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref)
-          const metadata = await getMetadata(uploadTask.snapshot.ref)
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref)
+            const metadata = await getMetadata(uploadTask.snapshot.ref)
 
-          resolve({
-            id: uploadTask.snapshot.ref.name,
-            name: metadata.name || uploadTask.snapshot.ref.name,
-            fullPath: metadata.fullPath || uploadTask.snapshot.ref.fullPath,
-            downloadURL,
-            contentType: metadata.contentType || '',
-            size: metadata.size || 0,
-            createdAt: metadata.timeCreated ? new Date(metadata.timeCreated).getTime() : Date.now(),
-          })
+            resolve({
+              id: uploadTask.snapshot.ref.name,
+              name: metadata.name || uploadTask.snapshot.ref.name,
+              fullPath: metadata.fullPath || uploadTask.snapshot.ref.fullPath,
+              downloadURL,
+              contentType: metadata.contentType || '',
+              size: metadata.size || 0,
+              createdAt: metadata.timeCreated ? new Date(metadata.timeCreated).getTime() : Date.now(),
+            })
+          } catch (error) {
+            // Without this, failures inside the completion callback would be
+            // swallowed by the SDK and the promise would never settle.
+            reject(createRepositoryError(RepositoryErrorCode.STORAGE_ERROR, 'Failed to finalize upload', error))
+          }
         }
       )
     })
@@ -143,7 +172,7 @@ export class StorageAdapter {
   /**
    * Recursively delete all files in a directory
    */
-  private async deleteDirectoryRecursively(directoryRef: any): Promise<void> {
+  private async deleteDirectoryRecursively(directoryRef: StorageReference): Promise<void> {
     const result = await listAll(directoryRef)
 
     // Delete all files in current directory (with concurrency limit)
@@ -273,7 +302,7 @@ export class StorageAdapter {
   // Helper Methods
 
   private extractUserId(path: string): string {
-    const match = path.match(/users\/([^\/]+)/)
+    const match = path.match(/users\/([^/]+)/)
     return match ? match[1] : ''
   }
 

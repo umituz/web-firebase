@@ -37,6 +37,51 @@ Comprehensive Firebase integration with Domain-Driven Design (DDD) architecture 
 npm install @umituz/web-firebase firebase@^12
 ```
 
+### Requirements
+
+| Dependency | Type | Version |
+|---|---|---|
+| `firebase` | peer | `>=12` |
+| `react` | peer (hooks/features only) | `>=18` |
+| Node.js | engine | `>=18` |
+
+React is only needed if you use the React hooks/providers. The core (auth, Firestore, Storage services) works without it.
+
+### Package Exports
+
+This package publishes **raw TypeScript source** (`main` points to `src/index.ts`). Consumers must compile TS in their own build — standard for internal Next.js/TS apps, not suitable for plain-JS consumers.
+
+```typescript
+import { ... } from '@umituz/web-firebase'           // root barrel
+import { ... } from '@umituz/web-firebase/auth'       // auth domain
+import { ... } from '@umituz/web-firebase/firestore'  // firestore domain
+import { ... } from '@umituz/web-firebase/storage'    // StorageAdapter + storageService
+import { ... } from '@umituz/web-firebase/anonymous'  // anonymous auth domain
+import { ... } from '@umituz/web-firebase/config'     // auth config (initAuthConfig, updateAuthConfig)
+```
+
+Subpath imports (`/auth`, `/firestore`, …) are the tree-shakeable entry points; prefer them over the root barrel in bundle-size-sensitive apps.
+
+### Platform Compatibility
+
+- **Browser** — fully supported (primary target). Auth uses `browserLocalPersistence`.
+- **SSR (Next.js etc.)** — safe to import on the server. `localStorage` access, analytics, and browser-only auth persistence are guarded behind `typeof window` checks and degrade gracefully (analytics returns `null`, timezone falls back to `UTC`).
+- **Node.js** — works for tooling/tests. Background cleanup timers call `unref()` so they never keep a process alive. `File`/`Blob` APIs (upload) require a browser or a polyfill.
+
+## 🆕 What's New in v3.7.0
+
+- **`resetFirebase()`** — clears all module singletons; for tests and full app teardown.
+- **`UploadOptions.signal`** — cancel uploads via `AbortSignal` (`uploadTask.cancel()` under the hood).
+- **Unique subscription IDs** — two listeners on the same collection/document no longer evict each other in `RealTimeSubscriptionManager` (was a silent data-loss bug).
+- **`createWithAutoIds` fixed** — auto-ID batch creation no longer throws; batch chunking now works as documented (was contradicting itself with a `BatchTooLargeError`).
+- **Sane retry defaults** — `TransactionManager` outer retries default to `1` (Firestore already retries ×5 internally; the old default of `5` meant up to 30 attempts). `BatchProcessor` retries failed batches up to `3` times instead of infinitely.
+- **SSR safety** — anonymous-auth `localStorage` access fully guarded; `Intl.DateTimeFormat` no longer evaluated at module load.
+- **Timer hygiene** — `LRUCache` cleanup interval is lazy (starts on first use, stops when empty) and unreffed in Node; `initializeFirebase()` warns on projectId mismatch instead of silently switching projects.
+- **Deprecations** — `FirestoreService` and `StorageService` (the pre-repository-era duplicates) are now marked `@deprecated` in favor of `FirestoreRepository` and `StorageAdapter`. They still work; they will be removed in the next major.
+- **Dev tooling** — ESLint 9 + typescript-eslint, Vitest test suite (72 tests), GitHub Actions CI (Node 20/22), `engines.node >= 18`.
+
+See [CHANGELOG.md](./CHANGELOG.md) for details.
+
 ## 🏗️ Architecture
 
 This package follows Domain-Driven Design principles with clear layer separation:

@@ -64,6 +64,7 @@ interface Subscription {
 export class RealTimeSubscriptionManager {
   private subscriptions: Map<string, Subscription> = new Map();
   private cleanupIntervalId: ReturnType<typeof setInterval> | null = null;
+  private nextSubscriptionSeq = 0;
   private get db(): Firestore {
     const db = getFirebaseDB();
     if (!db) {
@@ -84,6 +85,7 @@ export class RealTimeSubscriptionManager {
     const { includeMetadataChanges = false, onError } = options;
 
     const docRef = doc(this.db, collectionName, documentId);
+    const subscriptionId = this.generateId('doc', collectionName, documentId);
 
     const unsubscribe = onSnapshot(
       docRef,
@@ -94,14 +96,13 @@ export class RealTimeSubscriptionManager {
         } else {
           callback(null);
         }
-        this.updateLastActivity(this.generateId('doc', collectionName, documentId));
+        this.updateLastActivity(subscriptionId);
       },
       (error) => {
         onError?.(error as Error);
       }
     );
 
-    const subscriptionId = this.generateId('doc', collectionName, documentId);
     this.addSubscription(subscriptionId, unsubscribe);
 
     // Return unsubscribe function
@@ -126,6 +127,10 @@ export class RealTimeSubscriptionManager {
       ? query(collectionRef, ...constraints)
       : collectionRef;
 
+    // Every subscription gets a unique ID: two listeners on the same
+    // collection (with different constraints) must not evict each other.
+    const subscriptionId = this.generateId('collection', collectionName);
+
     const unsubscribe = onSnapshot(
       q,
       { includeMetadataChanges },
@@ -134,14 +139,13 @@ export class RealTimeSubscriptionManager {
           (doc) => ({ id: doc.id, ...doc.data() } as unknown as T)
         );
         callback(data);
-        this.updateLastActivity(this.generateId('collection', collectionName));
+        this.updateLastActivity(subscriptionId);
       },
       (error) => {
         onError?.(error as Error);
       }
     );
 
-    const subscriptionId = this.generateId('collection', collectionName);
     this.addSubscription(subscriptionId, unsubscribe);
 
     // Return unsubscribe function
@@ -160,6 +164,10 @@ export class RealTimeSubscriptionManager {
   ): () => void {
     const { includeMetadataChanges = false, onError } = options;
 
+    // `query.toString()` is "[object Object]" for every query, so it can never
+    // identify a subscription — use a unique sequential ID instead.
+    const subscriptionId = this.generateId('query');
+
     const unsubscribe = onSnapshot(
       query,
       { includeMetadataChanges },
@@ -168,14 +176,13 @@ export class RealTimeSubscriptionManager {
           (doc) => ({ id: doc.id, ...doc.data() } as T)
         );
         callback(data);
-        this.updateLastActivity(this.generateId('query', query.toString()));
+        this.updateLastActivity(subscriptionId);
       },
       (error) => {
         onError?.(error as Error);
       }
     );
 
-    const subscriptionId = this.generateId('query', query.toString());
     this.addSubscription(subscriptionId, unsubscribe);
 
     // Return unsubscribe function
@@ -199,7 +206,7 @@ export class RealTimeSubscriptionManager {
    * Unsubscribe from all subscriptions
    */
   unsubscribeAll(): void {
-    for (const [_id, subscription] of this.subscriptions) {
+    for (const subscription of this.subscriptions.values()) {
       subscription.unsubscribe();
     }
     this.subscriptions.clear();
@@ -260,23 +267,37 @@ export class RealTimeSubscriptionManager {
   }
 
   /**
-   * Generate unique subscription ID
+   * Generate a unique subscription ID.
+   * A per-instance sequence number guarantees uniqueness even when several
+   * subscriptions share the same collection path or query shape.
    */
-  private generateId(_type: string, ...parts: string[]): string {
-    return parts.join(':');
+  private generateId(type: string, ...parts: string[]): string {
+    const seq = ++this.nextSubscriptionSeq;
+    return [...parts, type, String(seq)].join(':');
   }
 
   /**
-   * Auto-cleanup interval (default: 5 minutes)
+   * Auto-cleanup interval (default: runs every 5 minutes and unsubscribes
+   * listeners with no snapshot activity for `inactivityMs`).
+   *
+   * WARNING: a listener that receives no snapshots for `inactivityMs` will be
+   * unsubscribed even though it is healthy — Firestore only emits on changes.
+   * Only enable this for short-lived polling-style listeners.
+   *
    * @returns Cleanup function to stop the interval
    */
-  startAutoCleanup(intervalMs: number = 5 * 60 * 1000): () => void {
+  startAutoCleanup(intervalMs: number = 5 * 60 * 1000, inactivityMs: number = intervalMs): () => void {
     // Clear existing interval if any
     this.stopAutoCleanup();
 
     this.cleanupIntervalId = setInterval(() => {
-      this.cleanupInactiveSubscriptions(intervalMs);
+      this.cleanupInactiveSubscriptions(inactivityMs);
     }, intervalMs);
+
+    // Don't keep Node.js processes alive just for subscription cleanup
+    if (typeof this.cleanupIntervalId === 'object' && this.cleanupIntervalId && 'unref' in this.cleanupIntervalId) {
+      (this.cleanupIntervalId as { unref: () => void }).unref();
+    }
 
     // Return cleanup function
     return () => this.stopAutoCleanup();

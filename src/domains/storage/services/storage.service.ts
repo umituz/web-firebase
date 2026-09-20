@@ -18,7 +18,15 @@ import type {
   UploadResult,
   UploadOptions,
 } from '../entities'
+import { createRepositoryError, RepositoryErrorCode } from '../../firestore/errors/repository.errors'
 
+/**
+ * Firestore Storage service (user-collection oriented).
+ *
+ * @deprecated Prefer `StorageAdapter` (exported as `storageService` from the
+ * package root and the `./storage` subpath). This class is kept for
+ * backwards compatibility with the `./storage` domain barrel.
+ */
 class StorageService implements IStorageService {
   private get storage() {
     const storage = getFirebaseStorage()
@@ -109,8 +117,8 @@ class StorageService implements IStorageService {
     try {
       const storageRef = ref(this.storage, path)
       return await getDownloadURL(storageRef)
-    } catch {
-      throw new Error('File not found')
+    } catch (error) {
+      throw createRepositoryError(RepositoryErrorCode.FILE_NOT_FOUND, 'File not found', error)
     }
   }
 
@@ -120,8 +128,8 @@ class StorageService implements IStorageService {
     try {
       const storageRef = ref(this.storage, path)
       await deleteObject(storageRef)
-    } catch {
-      throw new Error('File not found')
+    } catch (error) {
+      throw createRepositoryError(RepositoryErrorCode.FILE_NOT_FOUND, 'File not found', error)
     }
   }
 
@@ -148,8 +156,8 @@ class StorageService implements IStorageService {
         const batch = allFiles.slice(i, i + concurrencyLimit)
         await Promise.all(batch.map((item) => deleteObject(item)))
       }
-    } catch {
-      throw new Error('Failed to delete user files')
+    } catch (error) {
+      throw createRepositoryError(RepositoryErrorCode.STORAGE_ERROR, 'Failed to delete user files', error)
     }
   }
 

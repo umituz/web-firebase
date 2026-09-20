@@ -5,7 +5,14 @@
 # TypeScript cache
 *.tsbuildinfo
 
-# Development files
-.eslintrc.json
-.prettierrc
+# Tests and development files
+tests
+**/*.test.ts
+**/*.test.tsx
+vitest.config.ts
+eslint.config.js
+.github
+
+# Repository files
 .gitignore
+.npmignore

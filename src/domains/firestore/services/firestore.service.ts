@@ -18,7 +18,16 @@ import {
 import { getFirebaseDB } from '../../../infrastructure/firebase/client'
 import type { IFirestoreService } from '../types'
 import type { User } from '../entities'
+import { createRepositoryError, RepositoryErrorCode } from '../errors/repository.errors'
 
+/**
+ * User-collection oriented Firestore service.
+ *
+ * @deprecated Prefer the generic `FirestoreRepository` for new code — it
+ * supports caching, sub-collections, pagination and real-time watches for any
+ * collection. This user-specific service is kept for backwards compatibility
+ * with the `./firestore` subpath export.
+ */
 class FirestoreService implements IFirestoreService {
   private get db() {
     const db = getFirebaseDB()
@@ -41,7 +50,7 @@ class FirestoreService implements IFirestoreService {
 
       return { id: snap.id, ...snap.data() } as unknown as User
     } catch (error) {
-      throw new Error('User not found')
+      throw createRepositoryError(RepositoryErrorCode.DOCUMENT_NOT_FOUND, 'User not found', error)
     }
   }
 
@@ -57,7 +66,7 @@ class FirestoreService implements IFirestoreService {
       const doc = snap.docs[0]
       return { id: doc.id, ...doc.data() } as unknown as User
     } catch (error) {
-      throw new Error('Failed to query user')
+      throw createRepositoryError(RepositoryErrorCode.QUERY_FAILED, 'Failed to query user', error)
     }
   }
 
@@ -66,7 +75,7 @@ class FirestoreService implements IFirestoreService {
       const docRef = doc(this.db, this.USERS_COLLECTION, userId)
       await setDoc(docRef, data, { merge: true })
     } catch (error) {
-      throw new Error('Failed to create user')
+      throw createRepositoryError(RepositoryErrorCode.DOCUMENT_INVALID, 'Failed to create user', error)
     }
   }
 
@@ -78,7 +87,7 @@ class FirestoreService implements IFirestoreService {
         'profile.updatedAt': Date.now(),
       } as Partial<User> & { 'profile.updatedAt': number })
     } catch (error) {
-      throw new Error('Failed to update user')
+      throw createRepositoryError(RepositoryErrorCode.DOCUMENT_NOT_FOUND, 'Failed to update user', error)
     }
   }
 
@@ -87,7 +96,7 @@ class FirestoreService implements IFirestoreService {
       const docRef = doc(this.db, this.USERS_COLLECTION, userId)
       await deleteDoc(docRef)
     } catch (error) {
-      throw new Error('Failed to delete user')
+      throw createRepositoryError(RepositoryErrorCode.DOCUMENT_NOT_FOUND, 'Failed to delete user', error)
     }
   }
 
@@ -113,7 +122,7 @@ class FirestoreService implements IFirestoreService {
 
       await updateDoc(docRef, updateData)
     } catch (error) {
-      throw new Error('Failed to update profile')
+      throw createRepositoryError(RepositoryErrorCode.DOCUMENT_NOT_FOUND, 'Failed to update profile', error)
     }
   }
 
@@ -160,7 +169,7 @@ class FirestoreService implements IFirestoreService {
 
       await updateDoc(docRef, updateData)
     } catch (error) {
-      throw new Error('Failed to update settings')
+      throw createRepositoryError(RepositoryErrorCode.DOCUMENT_NOT_FOUND, 'Failed to update settings', error)
     }
   }
 
@@ -210,7 +219,7 @@ class FirestoreService implements IFirestoreService {
 
       await updateDoc(docRef, updateData)
     } catch (error) {
-      throw new Error('Failed to update subscription')
+      throw createRepositoryError(RepositoryErrorCode.DOCUMENT_NOT_FOUND, 'Failed to update subscription', error)
     }
   }
 
@@ -221,7 +230,7 @@ class FirestoreService implements IFirestoreService {
         'profile.lastLoginAt': Date.now(),
       } as { 'profile.lastLoginAt': number })
     } catch (error) {
-      throw new Error('Failed to update last login')
+      throw createRepositoryError(RepositoryErrorCode.DOCUMENT_NOT_FOUND, 'Failed to update last login', error)
     }
   }
 
@@ -231,7 +240,7 @@ class FirestoreService implements IFirestoreService {
       const snap = await getDocs(q)
       return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as unknown as User))
     } catch (error) {
-      throw new Error('Failed to query users')
+      throw createRepositoryError(RepositoryErrorCode.QUERY_FAILED, 'Failed to query users', error)
     }
   }
 

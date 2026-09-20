@@ -39,7 +39,10 @@ export interface TransactionOperation {
  */
 export interface TransactionOptions {
   /**
-   * Maximum number of retries for conflicts
+   * Extra outer retries on top of Firestore's own internal retries.
+   * `runTransaction` already retries contention internally (up to 5 attempts),
+   * so the default here is a single additional attempt — raising it multiplies
+   * the total number of transaction attempts.
    */
   maxRetries?: number;
 
@@ -110,7 +113,7 @@ export class TransactionManager {
     operations: TransactionOperation[],
     options: TransactionOptions = {}
   ): Promise<TransactionResult> {
-    const { maxRetries = 5, enableOptimisticLocking = false, maxDelay = 5000 } = options;
+    const { maxRetries = 1, enableOptimisticLocking = false, maxDelay = 5000 } = options;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
@@ -171,13 +174,14 @@ export class TransactionManager {
     // Check for Firebase Firestore error codes
     const errorCode = (error as { code?: string }).code;
     if (errorCode) {
-      return [
+      const retryableCodes: readonly string[] = [
         FIRESTORE_ERROR_CODES.ABORTED,
         FIRESTORE_ERROR_CODES.UNAVAILABLE,
         FIRESTORE_ERROR_CODES.DEADLINE_EXCEEDED,
         FIRESTORE_ERROR_CODES.RESOURCE_EXHAUSTED,
         FIRESTORE_ERROR_CODES.INTERNAL,
-      ].includes(errorCode as any);
+      ];
+      return retryableCodes.includes(errorCode);
     }
 
     // Fallback to message checking for backward compatibility
@@ -261,7 +265,7 @@ export class TransactionManager {
     fn: (transaction: Transaction) => Promise<T>,
     options: TransactionOptions = {}
   ): Promise<T> {
-    const { maxRetries = 5, maxDelay = 5000 } = options;
+    const { maxRetries = 1, maxDelay = 5000 } = options;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {

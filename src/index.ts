@@ -12,6 +12,7 @@
 
 export {
   initializeFirebase,
+  resetFirebase,
   getFirebaseApp,
   getFirebaseAuth,
   getFirebaseDB,

@@ -58,7 +58,23 @@ export interface AuthConfig {
 }
 
 /**
+ * Resolve the runtime timezone without throwing in exotic environments.
+ * Evaluated lazily (never at module scope) so importing this module stays
+ * side-effect free.
+ */
+function resolveTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  } catch {
+    return 'UTC'
+  }
+}
+
+/**
  * Default Auth Configuration
+ *
+ * Note: `defaultUserSettings.timezone` is intentionally not resolved at
+ * module scope; `initAuthConfig()` fills it in from the runtime locale.
  */
 export const DEFAULT_AUTH_CONFIG: AuthConfig = {
   emailPasswordEnabled: true,
@@ -70,7 +86,7 @@ export const DEFAULT_AUTH_CONFIG: AuthConfig = {
   defaultUserSettings: {
     theme: 'system',
     language: 'en',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timezone: 'UTC',
     currency: 'USD',
     notifications: {
       email: true,
@@ -102,7 +118,17 @@ let currentConfig: AuthConfig = DEFAULT_AUTH_CONFIG
  * Initialize auth configuration
  */
 export function initAuthConfig(config: Partial<AuthConfig> = {}): void {
-  currentConfig = { ...DEFAULT_AUTH_CONFIG, ...config }
+  currentConfig = {
+    ...DEFAULT_AUTH_CONFIG,
+    ...config,
+    defaultUserSettings: {
+      ...DEFAULT_AUTH_CONFIG.defaultUserSettings,
+      ...config.defaultUserSettings,
+      timezone:
+        config.defaultUserSettings?.timezone
+        ?? resolveTimezone(),
+    },
+  }
 }
 
 /**
@@ -116,5 +142,17 @@ export function getAuthConfig(): AuthConfig {
  * Update auth configuration
  */
 export function updateAuthConfig(updates: Partial<AuthConfig>): void {
-  currentConfig = { ...currentConfig, ...updates }
+  currentConfig = {
+    ...currentConfig,
+    ...updates,
+    ...(updates.defaultUserSettings
+      ? {
+          defaultUserSettings: {
+            ...currentConfig.defaultUserSettings,
+            ...updates.defaultUserSettings,
+            timezone: updates.defaultUserSettings.timezone ?? currentConfig.defaultUserSettings?.timezone ?? resolveTimezone(),
+          },
+        }
+      : {}),
+  }
 }

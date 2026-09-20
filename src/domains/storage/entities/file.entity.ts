@@ -77,6 +77,11 @@ export interface UploadOptions {
   onProgress?: (progress: UploadProgress) => void
   metadata?: FileMetadata
   customMetadata?: Record<string, string>
+  /**
+   * Abort the in-flight upload. StorageAdapter cancels the underlying
+   * upload task and rejects with a RepositoryError.
+   */
+  signal?: AbortSignal
 }
 
 /**

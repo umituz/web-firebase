@@ -5,6 +5,95 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.0] - 2026-09-20
+
+Stability, correctness, and tooling release. All changes are backwards compatible;
+no public API was removed. Version bump is MINOR because new APIs were added.
+
+### ✨ Added
+
+- **`resetFirebase()`** — exported from the root entry. Clears all module-level
+  Firebase singletons so a fresh `initializeFirebase()` can run. Intended for
+  tests and full application teardown. Does not call `deleteApp()`.
+- **`UploadOptions.signal`** (`AbortSignal`) — `StorageAdapter.uploadFile()`
+  cancels the underlying `uploadTask` when the signal aborts and rejects with a
+  repository error (`'Upload cancelled'`).
+- **`RealTimeSubscriptionManager.startAutoCleanup(intervalMs, inactivityMs)`** —
+  new optional second parameter to decouple the sweep interval from the
+  inactivity threshold (default keeps old behavior: `inactivityMs = intervalMs`).
+- **`BatchProcessor` retry budget** — constructor accepts `maxRetries` (default `3`);
+  failed batches are requeued with an incremented budget and dropped (with
+  `console.error`) once it is exhausted, instead of retrying forever.
+- **`PerformanceMonitor` opt-in logging** — constructor accepts `logResults`
+  (default `false`); timing logs were previously unconditionally printed.
+- **Tooling** — ESLint 9 flat config (`eslint.config.mjs`, typescript-eslint 8),
+  Vitest test suite (`tests/`, 72 tests), GitHub Actions CI (Node 20/22 matrix:
+  lint → typecheck → test → build), `engines.node >= 18`, committed lockfile.
+
+### 🐛 Fixed
+
+- **Real-time subscription ID collisions (P0)** — `RealTimeSubscriptionManager`
+  generated the same ID for every listener on the same collection/path
+  (`query.toString()` is `"[object Object]"` for all queries). The second
+  subscription silently replaced the first in the registry: the first
+  listener could never be unsubscribed or cleaned up. IDs are now unique via a
+  per-instance sequence number.
+- **`BatchOperationManager.createWithAutoIds()` crash (P0)** — called
+  `doc(db, collectionName)` with a collection name, producing an invalid
+  document path (`Value for argument 'pathSegments' must point to a document`).
+  Now uses `collection(db, name)` + `addDoc()`.
+- **Batch chunking self-contradiction (P0)** — `executeBatch` chunked writes
+  over the 500-op limit into multiple batches, then immediately threw
+  `BatchTooLargeError` for anything over one chunk. Chunking now works as
+  documented; the contradictory throw was removed.
+- **Upload promise could never settle** — errors thrown inside the resumable
+  upload completion callback (e.g. `getDownloadURL` failure) were swallowed by
+  the SDK listener. The callback is now wrapped in try/catch and rejects the
+  promise with a repository error.
+- **Anonymous auth SSR crash** — `localStorage` was accessed at module scope /
+  without guards; on the server this threw. All access now goes through a
+  `getStorage(): Storage | null` guard (typeof check + try/catch) that returns
+  `null` on the server.
+- **Module-scope `Intl.DateTimeFormat()`** — evaluated at import time in
+  `auth.config.ts`, violating `sideEffects: false` and crashing in environments
+  without full ICU. Timezone is now resolved lazily with a `'UTC'` fallback.
+- **`deleteUserFiles` recursion** — internal helper was untyped (`any`);
+  now `deleteDirectoryRecursively(directoryRef: StorageReference)`.
+- **Firestore/Storage service errors** — all catch blocks in the deprecated
+  `FirestoreService`/`StorageService` re-threw generic `Error`s, discarding
+  Firebase error codes. They now throw repository errors that preserve the
+  original error as `originalError`.
+
+### ⚠️ Changed
+
+- **`TransactionManager` default `maxRetries`: 5 → 1** (both `executeTransaction`
+  and `withTransaction`). `runTransaction` already retries contention internally
+  up to 5 times; the old default multiplied that into up to 30 total attempts
+  (retry storm). Pass `maxRetries` explicitly to restore the old outer retry
+  count if you rely on it.
+- **`initializeFirebase()` projectId mismatch** — previously re-initialized or
+  silently kept returning an app for a different project when called with a
+  different `projectId`. Now emits a `console.warn` and still returns the
+  existing app (idempotent). The second project was never actually usable.
+- **`LRUCache` cleanup interval lifecycle** — the interval is now started lazily
+  on first `set()` (previously ran from construction, even if the cache was
+  never used), stopped when the cache empties, and `unref()`ed in Node so it
+  never keeps a process alive. New `dispose()` method stops cleanup and clears.
+- **`RealTimeSubscriptionManager.startAutoCleanup` warning** — Firestore only
+  emits snapshots on change, so an inactivity-based sweep unsubscribes healthy
+  quiet listeners. Documented as intended for short-lived polling-style
+  listeners only.
+
+### 🗑️ Deprecated
+
+- **`FirestoreService`** — superseded by `FirestoreRepository`. Still exported
+  and functional; will be removed in the next major version.
+- **`StorageService`** (in `domains/storage/services`) — superseded by
+  `StorageAdapter`. Still exported and functional; will be removed in the next
+  major version.
+
+---
+
 ## [3.2.1] - 2026-03-22
 
 ### 🐛 Fixed

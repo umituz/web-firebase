@@ -41,9 +41,8 @@ export class LRUCache<K, V> {
     this.maxSize = options.maxSize ?? 100;
     this.ttl = options.ttl ?? 5 * 60 * 1000; // 5 minutes
     this.debug = options.debug ?? false;
-
-    // Start periodic cleanup
-    this.startCleanup();
+    // Cleanup interval is started lazily on the first `set()` so that simply
+    // constructing a cache (e.g. a repository) never leaks a timer.
   }
 
   /**
@@ -103,6 +102,9 @@ export class LRUCache<K, V> {
       this.removeLeastRecentlyUsed();
     }
 
+    // Ensure the cleanup interval is running now that there is data to expire
+    this.startCleanup();
+
     this.log('Cache SET', key, `Size: ${this.cache.size}/${this.maxSize}`);
   }
 
@@ -139,6 +141,7 @@ export class LRUCache<K, V> {
     this.cache.clear();
     this.head = null;
     this.tail = null;
+    this.stopCleanup();
     this.log('Cache CLEAR');
   }
 
@@ -190,22 +193,40 @@ export class LRUCache<K, V> {
   }
 
   /**
-   * Start periodic cleanup
+   * Start periodic cleanup (no-op if already running)
    */
   private startCleanup(): void {
+    if (this.cleanupInterval !== null) return;
+
     this.cleanupInterval = setInterval(() => {
       this.cleanupExpired();
+      // Nothing left to expire — release the timer until the next `set()`.
+      if (this.cache.size === 0) {
+        this.stopCleanup();
+      }
     }, 60 * 1000); // Every minute
+
+    // In Node.js, don't keep the process alive just for cache cleanup
+    if (typeof this.cleanupInterval === 'object' && this.cleanupInterval && 'unref' in this.cleanupInterval) {
+      (this.cleanupInterval as { unref: () => void }).unref();
+    }
   }
 
   /**
    * Stop cleanup interval
    */
-  dispose(): void {
-    if (this.cleanupInterval) {
+  private stopCleanup(): void {
+    if (this.cleanupInterval !== null) {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
+  }
+
+  /**
+   * Stop the cleanup interval and drop all cached items
+   */
+  dispose(): void {
+    this.stopCleanup();
     this.clear();
   }
 

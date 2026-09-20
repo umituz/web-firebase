@@ -6,7 +6,7 @@
 /**
  * Debounce function - delays execution until after wait milliseconds have elapsed since the last call
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: never[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -27,7 +27,7 @@ export function debounce<T extends (...args: any[]) => any>(
 /**
  * Throttle function - ensures execution at most once every wait milliseconds
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: never[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -64,7 +64,7 @@ export class RequestDebouncer {
   /**
    * Debounce a function with a specific key
    */
-  debounce<T extends (...args: any[]) => any>(
+  debounce<T extends (...args: never[]) => unknown>(
     key: string,
     func: T,
     wait: number,
@@ -124,7 +124,7 @@ export class RequestThrottler {
   /**
    * Throttle a function with a specific key
    */
-  throttle<T extends (...args: any[]) => any>(
+  throttle<T extends (...args: never[]) => unknown>(
     key: string,
     func: T,
     wait: number,
@@ -185,6 +185,24 @@ export class RequestThrottler {
 }
 
 /**
+ * Chrome-specific heap memory info (non-standard).
+ */
+interface PerformanceMemoryLike {
+  usedJSHeapSize: number
+}
+
+type PerformanceWithMemory = Performance & { memory?: PerformanceMemoryLike }
+
+/**
+ * Read the current JS heap usage, or null where unavailable (non-Chromium).
+ */
+function getUsedHeapSize(): number | null {
+  if (typeof performance === 'undefined') return null
+  const memory = (performance as PerformanceWithMemory).memory
+  return memory ? memory.usedJSHeapSize : null
+}
+
+/**
  * Memory leak detector - helps identify potential memory leaks
  */
 export class MemoryLeakDetector {
@@ -200,9 +218,8 @@ export class MemoryLeakDetector {
    * Take a memory snapshot
    */
   takeSnapshot(key: string): number {
-    if (typeof performance !== 'undefined' && 'memory' in performance) {
-      const memory = (performance as any).memory;
-      const used = memory.usedJSHeapSize;
+    const used = getUsedHeapSize();
+    if (used !== null) {
       this.snapshots.set(key, used);
       return used;
     }
@@ -216,15 +233,10 @@ export class MemoryLeakDetector {
     const previous = this.snapshots.get(key);
     if (!previous) return false;
 
-    if (typeof performance !== 'undefined' && 'memory' in performance) {
-      const memory = (performance as any).memory;
-      const current = memory.usedJSHeapSize;
-      const diff = current - previous;
+    const current = getUsedHeapSize();
+    if (current === null) return false;
 
-      return diff > this.threshold;
-    }
-
-    return false;
+    return current - previous > this.threshold;
   }
 
   /**
@@ -234,13 +246,8 @@ export class MemoryLeakDetector {
     const previous = this.snapshots.get(key);
     if (!previous) return 0;
 
-    if (typeof performance !== 'undefined' && 'memory' in performance) {
-      const memory = (performance as any).memory;
-      const current = memory.usedJSHeapSize;
-      return current - previous;
-    }
-
-    return 0;
+    const current = getUsedHeapSize();
+    return current === null ? 0 : current - previous;
   }
 
   /**
@@ -256,6 +263,8 @@ export class MemoryLeakDetector {
  */
 export class PerformanceMonitor {
   private marks: Map<string, number> = new Map();
+
+  constructor(private logResults: boolean = false) {}
 
   /**
    * Start timing a operation
@@ -290,7 +299,9 @@ export class PerformanceMonitor {
       return await fn();
     } finally {
       const duration = this.end(key);
-      console.log(`[Performance] ${key}: ${duration.toFixed(2)}ms`);
+      if (this.logResults) {
+        console.log(`[Performance] ${key}: ${duration.toFixed(2)}ms`);
+      }
     }
   }
 
@@ -303,7 +314,9 @@ export class PerformanceMonitor {
       return fn();
     } finally {
       const duration = this.end(key);
-      console.log(`[Performance] ${key}: ${duration.toFixed(2)}ms`);
+      if (this.logResults) {
+        console.log(`[Performance] ${key}: ${duration.toFixed(2)}ms`);
+      }
     }
   }
 }
@@ -311,22 +324,28 @@ export class PerformanceMonitor {
 /**
  * Batch processor - batches operations for better performance
  */
+interface BatchQueueEntry<T> {
+  item: T;
+  retries: number;
+}
+
 export class BatchProcessor<T> {
-  private queue: T[] = [];
+  private queue: BatchQueueEntry<T>[] = [];
   private processing: boolean = false;
   private batchTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private batchSize: number,
     private batchDelay: number,
-    private processor: (batch: T[]) => Promise<void>
+    private processor: (batch: T[]) => Promise<void>,
+    private maxRetries: number = 3
   ) {}
 
   /**
    * Add item to batch queue
    */
   add(item: T): void {
-    this.queue.push(item);
+    this.queue.push({ item, retries: 0 });
 
     if (this.queue.length >= this.batchSize) {
       this.processBatch();
@@ -359,14 +378,28 @@ export class BatchProcessor<T> {
     if (this.queue.length === 0) return;
 
     this.processing = true;
-    const batch = this.queue.splice(0, this.batchSize);
+    const entries = this.queue.splice(0, this.batchSize);
+    const batch = entries.map((entry) => entry.item);
 
     try {
       await this.processor(batch);
     } catch (error) {
-      console.error('Batch processing error:', error);
-      // Re-add failed items to queue
-      this.queue.unshift(...batch);
+      const failedEntries = entries.filter((entry) => entry.retries < this.maxRetries);
+
+      if (failedEntries.length > 0) {
+        // Re-add failed items with an incremented retry budget
+        this.queue.unshift(
+          ...failedEntries.map((entry) => ({ item: entry.item, retries: entry.retries + 1 }))
+        );
+      }
+
+      if (failedEntries.length < entries.length) {
+        // Retry budget exhausted — drop those items instead of retrying forever
+        console.error(
+          `BatchProcessor: ${entries.length - failedEntries.length} item(s) dropped after ${this.maxRetries} retries:`,
+          error
+        );
+      }
     } finally {
       this.processing = false;
 

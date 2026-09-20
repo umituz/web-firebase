@@ -32,21 +32,37 @@ let db: Firestore | null = null
 let storage: FirebaseStorage | null = null
 let functions: Functions | null = null
 let analytics: Analytics | null = null
+let initializedProjectId: string | null = null
 
 /**
  * Initialize Firebase with provided configuration
  * Must be called before using any Firebase services
+ *
+ * Subsequent calls are idempotent: if Firebase is already initialized the
+ * existing app is returned. If the new config points to a different project,
+ * a warning is emitted and the existing app is still returned — one page can
+ * only host the singletons managed here. Use `initializeApp` from the Firebase
+ * SDK directly if you need multiple projects side by side.
  *
  * @param config - Firebase configuration object
  * @returns FirebaseApp instance
  */
 export function initializeFirebase(config: FirebaseConfig): FirebaseApp {
   if (app) {
+    if (config.projectId && initializedProjectId && config.projectId !== initializedProjectId) {
+      console.warn(
+        `@umituz/web-firebase: initializeFirebase() was called with projectId ` +
+        `"${config.projectId}" but Firebase is already initialized with project ` +
+        `"${initializedProjectId}". Returning the existing app. Initialize a ` +
+        `second project with the firebase/app SDK if you need both.`
+      )
+    }
     return app
   }
 
   if (getApps().length > 0) {
     app = getApps()[0]
+    initializedProjectId = app.options.projectId ?? null
     return app
   }
 
@@ -56,6 +72,7 @@ export function initializeFirebase(config: FirebaseConfig): FirebaseApp {
   }
 
   app = initializeApp(config)
+  initializedProjectId = config.projectId
   return app
 }
 
@@ -80,7 +97,7 @@ export function getFirebaseAuth(): Auth | null {
     if (firebaseApp && typeof window !== 'undefined') {
       try {
         auth = getAuth(firebaseApp)
-      } catch (e) {
+      } catch {
         auth = initializeAuth(firebaseApp, {
           persistence: browserLocalPersistence,
         })
@@ -201,4 +218,22 @@ export function getFirebaseInstances(): FirebaseInstances | null {
  */
 export function isFirebaseInitialized(): boolean {
   return app !== null
+}
+
+/**
+ * Reset all module-level Firebase instances.
+ *
+ * Intended for tests and full application teardown. Does NOT delete the
+ * underlying FirebaseApp (use `deleteApp()` from the Firebase SDK for that);
+ * it only clears the singletons held by this module so a fresh
+ * `initializeFirebase()` can run.
+ */
+export function resetFirebase(): void {
+  app = null
+  auth = null
+  db = null
+  storage = null
+  functions = null
+  analytics = null
+  initializedProjectId = null
 }
