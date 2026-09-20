@@ -27,8 +27,7 @@ no public API was removed. Version bump is MINOR because new APIs were added.
 - **`PerformanceMonitor` opt-in logging** — constructor accepts `logResults`
   (default `false`); timing logs were previously unconditionally printed.
 - **Tooling** — ESLint 9 flat config (`eslint.config.mjs`, typescript-eslint 8),
-  Vitest test suite (`tests/`, 72 tests), GitHub Actions CI (Node 20/22 matrix:
-  lint → typecheck → test → build), `engines.node >= 18`, committed lockfile.
+  Vitest test suite (`tests/`, 72 tests), `engines.node >= 18`, committed lockfile.
 
 ### 🐛 Fixed
 

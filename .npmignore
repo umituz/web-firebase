@@ -11,7 +11,6 @@ tests
 **/*.test.tsx
 vitest.config.ts
 eslint.config.js
-.github
 
 # Repository files
 .gitignore

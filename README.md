@@ -78,7 +78,7 @@ Subpath imports (`/auth`, `/firestore`, …) are the tree-shakeable entry points
 - **SSR safety** — anonymous-auth `localStorage` access fully guarded; `Intl.DateTimeFormat` no longer evaluated at module load.
 - **Timer hygiene** — `LRUCache` cleanup interval is lazy (starts on first use, stops when empty) and unreffed in Node; `initializeFirebase()` warns on projectId mismatch instead of silently switching projects.
 - **Deprecations** — `FirestoreService` and `StorageService` (the pre-repository-era duplicates) are now marked `@deprecated` in favor of `FirestoreRepository` and `StorageAdapter`. They still work; they will be removed in the next major.
-- **Dev tooling** — ESLint 9 + typescript-eslint, Vitest test suite (72 tests), GitHub Actions CI (Node 20/22), `engines.node >= 18`.
+- **Dev tooling** — ESLint 9 + typescript-eslint, Vitest test suite (72 tests), `engines.node >= 18`.
 
 See [CHANGELOG.md](./CHANGELOG.md) for details.
 
