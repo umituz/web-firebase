@@ -68,7 +68,7 @@ Subpath imports (`/auth`, `/firestore`, …) are the tree-shakeable entry points
 - **SSR (Next.js etc.)** — safe to import on the server. `localStorage` access, analytics, and browser-only auth persistence are guarded behind `typeof window` checks and degrade gracefully (analytics returns `null`, timezone falls back to `UTC`).
 - **Node.js** — works for tooling/tests. Background cleanup timers call `unref()` so they never keep a process alive. `File`/`Blob` APIs (upload) require a browser or a polyfill.
 
-## 🆕 What's New in v3.7.0
+## 🆕 What's New in v3.6.25
 
 - **`resetFirebase()`** — clears all module singletons; for tests and full app teardown.
 - **`UploadOptions.signal`** — cancel uploads via `AbortSignal` (`uploadTask.cancel()` under the hood).
